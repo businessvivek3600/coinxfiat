@@ -55,6 +55,7 @@ class SearchRequestDropdown extends StatelessWidget {
                   child: const FaIcon(FontAwesomeIcons.question,
                       color: Colors.grey, size: 10),
                 ),
+                //
               ),
             ],
           ).paddingBottom(10),
