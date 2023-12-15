@@ -7,3 +7,4 @@ export 'logout_dialog.dart';
 export 'multi_select_textfield.dart';
 export 'dropdown_text_field.dart';
 export 'text_field.dart';
+export 'arrow_painter_tab_decoration.dart';

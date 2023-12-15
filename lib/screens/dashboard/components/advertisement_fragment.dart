@@ -29,9 +29,11 @@ class _AdvertisementFragmentState extends State<AdvertisementFragment> {
                 onPressed: () => _showFilter(context)),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: FloatingActionButton.extended(
           onPressed: () => context.push(Paths.createOrEditAd('create', null)),
-          child: const FaIcon(FontAwesomeIcons.plus),
+          isExtended: true,
+          icon: Text('Create', style: boldTextStyle(color: Colors.white)),
+          label: const FaIcon(FontAwesomeIcons.rectangleAd),
         ),
         body: Column(
           children: [
@@ -41,13 +43,17 @@ class _AdvertisementFragmentState extends State<AdvertisementFragment> {
             ///list
             Expanded(
                 child: AnimatedListView(
+              padding: const EdgeInsets.only(bottom: 60),
               itemCount: 17,
               itemBuilder: (context, index) {
+                bool last = index == 16;
                 return Container(
                   decoration: BoxDecoration(
                       border: Border(
-                          bottom:
-                              BorderSide(color: Colors.grey.withOpacity(0.2)))),
+                          bottom: last
+                              ? BorderSide.none
+                              : BorderSide(
+                                  color: Colors.grey.withOpacity(0.2)))),
                   child: _TradeCard(
                     advertisementId: 'YCWKP6722XSN',
                     withUser: 'userAway',

@@ -38,7 +38,7 @@ LottieBuilder assetLottie(String path,
       delegates: delegates,
     );
 
-Widget assetImages(String path,
+Image assetImages(String path,
         {BoxFit? fit,
         bool fullPath = false,
         Color? color,

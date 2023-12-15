@@ -30,5 +30,8 @@ Widget space(double p, BuildContext context) =>
 double perSize(double p, BuildContext context) =>
     MediaQuery.of(context).size.height * p / 100;
 
+bool isDarkMode(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
 double paddingDefault = 30;
 double spaceDefault = 30;

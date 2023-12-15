@@ -8,6 +8,7 @@ import 'package:nb_utils/nb_utils.dart';
 import '../main.dart';
 import '../screens/screen_index.dart';
 import '../utils/utils_index.dart';
+import '../widgets/widget_index.dart';
 import 'route_index.dart';
 
 final GoRouter goRouter = GoRouter(
@@ -39,25 +40,47 @@ final GoRouter goRouter = GoRouter(
                   )),
         ),
 
+        ///my holdings
+        GoRoute(
+          path: Routes.myHoldings,
+          name: Routes.myHoldings,
+          pageBuilder: (context, state) =>
+              animatedRoute(state, (state) => const MyHoldingsPage()),
+        ),
+
         ///buy sell
         GoRoute(
           path: ':type(buy|sell)/trade/request',
           name: Routes.buyOrSell,
           pageBuilder: (context, state) => animatedRoute(
               state,
-              (state) =>
-                  BuyOrSell(type: state.pathParameters['type'] ?? 'buy')),
+              (state) => BuyOrSell(
+                  selling:
+                      (state.pathParameters['type'] ?? 'sell').toLowerCase() ==
+                          'sell')),
           routes: [
             GoRoute(
               path: ':requestId',
               pageBuilder: (context, state) => animatedRoute(
                   state,
                   (state) => BuyOrSell(
-                        type: state.pathParameters['type'] ?? 'buy',
+                        selling: (state.pathParameters['type'] ?? 'sell')
+                                .toLowerCase() ==
+                            'sell',
                         requestId: state.pathParameters['requestId'],
                       )),
             ),
           ],
+        ),
+
+        ///add gateway
+        GoRoute(
+          path: 'sell/gateway/add/:requestId',
+          name: Routes.addGateWay,
+          pageBuilder: (context, state) => animatedRoute(
+              state,
+              (state) =>
+                  AddGateway(requestId: state.pathParameters['requestId'])),
         ),
 
         ///payout history
@@ -173,6 +196,18 @@ final GoRouter goRouter = GoRouter(
                       )),
             ),
           ],
+        ),
+
+        ///widgets
+        GoRoute(
+          path: Routes.htmlPage,
+          name: Routes.htmlPage,
+          pageBuilder: (context, state) => animatedRoute(
+              state,
+              (state) => HtmlPage(
+                    title: state.uri.queryParameters['title'],
+                    html: state.uri.queryParameters['html'],
+                  )),
         ),
       ],
     ),

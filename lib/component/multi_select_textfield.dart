@@ -57,7 +57,8 @@ class _MultiSelectFieldState extends State<MultiSelectField> {
                 ),
                 triggerMode: TooltipTriggerMode.tap,
                 padding: const EdgeInsets.all(DEFAULT_PADDING),
-                margin: const EdgeInsets.all(DEFAULT_PADDING),
+                margin: const EdgeInsetsDirectional.symmetric(
+                    horizontal: DEFAULT_PADDING),
                 message: widget.toolTipText ?? '',
                 child: Container(
                   padding: const EdgeInsetsDirectional.all(5),

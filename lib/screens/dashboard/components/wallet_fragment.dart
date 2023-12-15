@@ -238,6 +238,7 @@ class _BuySellHistoryState extends State<_BuySellHistory>
               ? const Center(child: CircularProgressIndicator.adaptive())
               : TabBarView(
                   controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
                   children: const [
                     _BuyTradeList(typeIndex: 1),
                     _BuyTradeList(typeIndex: 0),
@@ -689,7 +690,7 @@ class _TradeCard extends StatelessWidget {
     this.status,
     this.requestedOn,
     this.onActionPressed,
-    this.typeIndex = 0,
+    this.typeIndex = 1,
   });
 
   @override

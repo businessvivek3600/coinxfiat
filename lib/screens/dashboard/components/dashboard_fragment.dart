@@ -1,10 +1,12 @@
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../../../component/component_index.dart';
 import '../../../constants/constants_index.dart';
+import '../../../routes/route_index.dart';
 import '../../screen_index.dart';
 
 class DashboardFragment extends StatefulWidget {
@@ -117,7 +119,7 @@ class _RestBody extends StatelessWidget {
                   bodyMedText('View All', context,
                           style: boldTextStyle(color: context.primaryColor))
                       .paddingOnly(right: DEFAULT_PADDING)
-                      .onTap(() {}),
+                      .onTap(() => context.push(Paths.tradeList('all', null))),
                 ],
               ),
               height10(),
@@ -161,13 +163,17 @@ class _RestBody extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.only(left: DEFAULT_PADDING),
         scrollDirection: Axis.horizontal,
-        children: const [
+        children: [
           ///Bitcoin
           WalletCard(
             title: 'Bitcoin',
             subTitle: 'BTC',
             amount: '0.0000978738',
             image: MyPng.coinDummy,
+            onTap: () => context.pushNamed(
+              Routes.walletDetails,
+              queryParameters: {'title': 'Bitcoin', 'subTitle': 'BTC'},
+            ),
           ),
 
           ///Ethereum
@@ -176,6 +182,10 @@ class _RestBody extends StatelessWidget {
             subTitle: 'ETH',
             amount: '38468320000',
             image: MyPng.coinDummy,
+            onTap: () => context.pushNamed(
+              Routes.walletDetails,
+              queryParameters: {'title': 'Ethereum', 'subTitle': 'ETH'},
+            ),
           ),
 
           ///Tether
@@ -184,6 +194,10 @@ class _RestBody extends StatelessWidget {
             subTitle: 'USDT',
             amount: '3572.000',
             image: MyPng.coinDummy,
+            onTap: () => context.pushNamed(
+              Routes.walletDetails,
+              queryParameters: {'title': 'Tether', 'subTitle': 'USDT'},
+            ),
           ),
         ],
       ),
@@ -292,18 +306,30 @@ class _Header extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              CircleAvatar(
-                                radius: DEFAULT_PADDING,
-                                backgroundColor: Colors.transparent,
-                                backgroundImage: const NetworkImage(
-                                    'https://www.pngitem.com/pimgs/m/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png'),
-                                onBackgroundImageError: (e, s) {
-                                  logger.i('error: $e', tag: 'profile home');
-                                  logger.i('stack: $s', tag: 'profile home');
-                                },
-                              ).onTap(() {
-                                dashboardScaffoldKey.currentState?.openDrawer();
-                              }),
+                              Container(
+                                decoration: BoxDecoration(
+                                  // color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: defaultBoxShadow(),
+                                  border:
+                                      Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: CircleAvatar(
+                                  radius: DEFAULT_PADDING,
+                                  backgroundColor: Colors.transparent,
+                                  backgroundImage: Image.network(
+                                    'https://www.ihna.edu.au/blog/wp-content/uploads/2022/10/user-dummy.png',
+                                    fit: BoxFit.cover,
+                                  ).image,
+                                  onBackgroundImageError: (e, s) {
+                                    // logger.i('error: $e', tag: 'profile home');
+                                    // logger.i('stack: $s', tag: 'profile home');
+                                  },
+                                ).onTap(() {
+                                  dashboardScaffoldKey.currentState
+                                      ?.openDrawer();
+                                }),
+                              ),
                               width10(),
                               bodyLargeText('Hi, John Doe', context,
                                   color: Colors.white),

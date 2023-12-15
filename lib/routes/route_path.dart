@@ -18,6 +18,9 @@ class Paths {
       '${Paths.dashboard}/${Routes.walletDetails}';
   static String buySell(String type, String? requestId) =>
       '${Paths.dashboard}/$type/trade/request${requestId != null ? '/$requestId' : ''}';
+  static String sellAddGateway(String? requestId) =>
+      '${Paths.dashboard}/sell/gateway/add${requestId != null ? '/$requestId' : ''}';
+  static const String holdings = '${Paths.dashboard}/${Routes.myHoldings}';
 
   ///payout history
   static const String payoutHistory =
@@ -49,4 +52,7 @@ class Paths {
   static const String support = '/${Routes.dashboard}/${Routes.support}';
   static const String chat =
       '/${Routes.dashboard}/${Routes.support}/${Routes.chat}';
+
+  ///widgets
+  static const String htmlPage = '/${Routes.dashboard}/${Routes.htmlPage}';
 }

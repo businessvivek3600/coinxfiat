@@ -17,6 +17,7 @@ class SearchRequestDropdown extends StatelessWidget {
     this.toolTipIconColor,
     this.toolTipBgColor,
     this.initialValue,
+    this.sideWidget,
   }) : super(key: key);
   final void Function(Pair?)? onChanged;
   final Future<List<Pair>> Function(String) onRequest;
@@ -27,6 +28,7 @@ class SearchRequestDropdown extends StatelessWidget {
   final Color? toolTipBgColor;
   final Pair? initialValue;
   final List<Pair> initialItems;
+  final Widget? sideWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -37,41 +39,50 @@ class SearchRequestDropdown extends StatelessWidget {
             children: [
               Text(titleText!, style: boldTextStyle()),
               10.width,
-              Tooltip(
-                decoration: BoxDecoration(
-                  color: toolTipBgColor ?? Colors.black,
-                  borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
-                ),
-                triggerMode: TooltipTriggerMode.tap,
-                padding: const EdgeInsets.all(DEFAULT_PADDING),
-                margin: const EdgeInsets.all(DEFAULT_PADDING),
-                message: toolTipText ?? '',
-                child: Container(
-                  padding: const EdgeInsetsDirectional.all(5),
+              if (toolTipText != null)
+                Tooltip(
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: toolTipIconColor ?? Colors.grey.shade200,
+                    color: toolTipBgColor ?? Colors.black,
+                    borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
                   ),
-                  child: const FaIcon(FontAwesomeIcons.question,
-                      color: Colors.grey, size: 10),
+                  triggerMode: TooltipTriggerMode.tap,
+                  padding: const EdgeInsets.all(DEFAULT_PADDING),
+                  margin: const EdgeInsetsDirectional.symmetric(
+                      horizontal: DEFAULT_PADDING),
+                  message: toolTipText ?? '',
+                  child: Container(
+                    padding: const EdgeInsetsDirectional.all(5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: toolTipIconColor ?? Colors.grey.shade200,
+                    ),
+                    child: const FaIcon(FontAwesomeIcons.question,
+                        color: Colors.grey, size: 10),
+                  ),
+                  //
                 ),
-                //
-              ),
             ],
           ).paddingBottom(10),
-        CustomDropdown<Pair>.searchRequest(
-          futureRequest: onRequest,
-          hintText: hintText,
-          items: initialItems,
-          initialItem: initialValue,
-          onChanged: (value) => onChanged?.call(value),
-          headerBuilder: (context, value) => Text(value.text,
-              style: boldTextStyle(
-                  color: Theme.of(context).textTheme.bodyLarge?.color)),
-          listItemBuilder: (context, value) => Text(value.text,
-              style: boldTextStyle(
-                  color: Theme.of(context).textTheme.bodyLarge?.color)),
-          closedBorder: Border.all(color: Colors.grey.shade300),
+        Row(
+          children: [
+            Expanded(
+              child: CustomDropdown<Pair>.searchRequest(
+                futureRequest: onRequest,
+                hintText: hintText,
+                items: initialItems,
+                initialItem: initialValue,
+                onChanged: (value) => onChanged?.call(value),
+                headerBuilder: (context, value) => Text(value.text,
+                    style: boldTextStyle(
+                        color: Theme.of(context).textTheme.bodyLarge?.color)),
+                listItemBuilder: (context, value) => Text(value.text,
+                    style: boldTextStyle(
+                        color: Theme.of(context).textTheme.bodyLarge?.color)),
+                closedBorder: Border.all(color: Colors.grey.shade300),
+              ),
+            ),
+            if (sideWidget != null) sideWidget!.paddingLeft(10),
+          ],
         ),
       ],
     );

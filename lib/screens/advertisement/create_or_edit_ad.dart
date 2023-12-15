@@ -55,15 +55,25 @@ class _CreateOrEditAdScreenState extends State<CreateOrEditAdScreen> {
               '${widget.type == 'create' ? 'New' : 'Update'} Advertisement'),
           actions: [
             ///submit button
-            TextButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  _formKey.currentState!.save();
-                  toast('Form submitted');
-                }
-              },
-              child: Text('Submit', style: boldTextStyle(color: Colors.white)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                SizedBox(
+                  child: TextButton(
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        _formKey.currentState!.save();
+                        toast('Form submitted');
+                      }
+                    },
+                    child: Text('Submit',
+                        style: boldTextStyle(color: Colors.white)),
+                  ),
+                ),
+              ],
             ),
+            DEFAULT_PADDING.toInt().width,
           ],
         ),
         body: Form(

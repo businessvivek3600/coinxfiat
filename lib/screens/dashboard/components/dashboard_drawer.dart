@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:coinxfiat/utils/utils_index.dart';
+import 'package:coinxfiat/widgets/widget_index.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -217,6 +218,13 @@ class _DrawerItemsTreeState extends State<DrawerItemsTree> {
         ],
       ),
 
+      /// My Holding
+      const MyNode(
+        title: 'My Holding',
+        children: <MyNode>[],
+        icon: FontAwesomeIcons.wallet,
+      ),
+
       ///transaction
       const MyNode(
         title: 'Transaction List',
@@ -249,6 +257,10 @@ class _DrawerItemsTreeState extends State<DrawerItemsTree> {
           children: <MyNode>[],
           icon: Icons.description),
 
+      ///privacy policy
+      const MyNode(
+          title: 'Privacy Policy', children: <MyNode>[], icon: Icons.policy),
+
       ///logout button
       const MyNode(title: 'Logout', children: <MyNode>[], icon: Icons.logout),
     ];
@@ -260,25 +272,36 @@ class _DrawerItemsTreeState extends State<DrawerItemsTree> {
 
   void _goThrough() {
     String nodeId = _drawerNodeId.value;
-    print('nodeId: $nodeId');
     if (nodeId.isNotEmpty) {
       switch (nodeId) {
         case 'Running':
           context.push(Paths.tradeList('running', null));
           _notificationCount.value++;
           break;
-
         case 'Completed':
           context.push(Paths.tradeList('completed', null));
-          _drawerNodeId.value = '';
           break;
         case 'Setup Wallet':
+          context.pushNamed(Routes.htmlPage, queryParameters: {
+            'title': 'Setup Wallet',
+            'html': setupWalletHTML,
+          });
           break;
         case 'Binance Exchange':
+          context.pushNamed(Routes.htmlPage, queryParameters: {
+            'title': 'Binance Exchange',
+            'html': binanceHTML,
+          });
           break;
         case 'Zebpay Exchange':
+          context.pushNamed(Routes.htmlPage, queryParameters: {
+            'title': 'Zebpay Exchange',
+            'html': zebpayHTML,
+          });
           break;
-        case 'Completed':
+        case 'My Holding':
+          context.pushNamed(Routes.myHoldings);
+          _drawerNodeId.value = '';
           break;
         case 'Transaction List':
           context.pushNamed(Routes.transactionHistory);
@@ -303,9 +326,20 @@ class _DrawerItemsTreeState extends State<DrawerItemsTree> {
           _drawerNodeId.value = '';
           break;
         case 'Terms & Conditions':
+          context.pushNamed(Routes.htmlPage, queryParameters: {
+            'title': 'Terms & Conditions',
+            'html': termsAndConditionsHTML,
+          });
+          break;
+        case 'Privacy Policy':
+          context.pushNamed(Routes.htmlPage, queryParameters: {
+            'title': 'Privacy Policy',
+            'html': privatePolicyHTML,
+          });
           break;
         default:
       }
+      _drawerNodeId.value = '';
     }
   }
 

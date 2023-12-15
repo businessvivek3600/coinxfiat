@@ -12,6 +12,8 @@ class Routes {
   ///Wallet
   static const String walletDetails = 'wallet-details';
   static const String buyOrSell = 'buy-or-sell';
+  static const String addGateWay = 'buy-or-sell-add-gateway';
+  static const String myHoldings = 'my-holdings';
 
   ///payout history
   static const String payoutHistory = 'payout-history';
@@ -43,4 +45,7 @@ class Routes {
   ///support
   static const String support = 'support';
   static const String chat = 'chat';
+
+  ///widgets
+  static const String htmlPage = 'html-page';
 }

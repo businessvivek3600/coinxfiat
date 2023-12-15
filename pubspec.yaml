@@ -52,6 +52,9 @@ dependencies:
   share_plus: ^7.2.1
   animated_custom_dropdown: ^2.0.0
   flutter_simple_multiselect: ^2.0.0
+  flutter_html: ^3.0.0-beta.2
+  flutter_widget_from_html: ^0.14.9
+  flutter_sticky_header: ^0.6.5
 
 dev_dependencies:
   flutter_test:

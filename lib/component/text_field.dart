@@ -22,6 +22,7 @@ class CustomTextField extends StatefulWidget {
     this.prefixIcon,
     this.maxLines = 1,
     this.textInputAction = TextInputAction.next,
+    this.controller,
   }) : super(key: key);
   final void Function(String?)? onChanged;
   final String hintText;
@@ -37,6 +38,7 @@ class CustomTextField extends StatefulWidget {
   final Widget? prefixIcon;
   final int maxLines;
   final TextInputAction textInputAction;
+  final TextEditingController? controller;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -47,7 +49,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void initState() {
     super.initState();
-    controller = TextEditingController(text: widget.initialValue);
+    controller =
+        widget.controller ?? TextEditingController(text: widget.initialValue);
   }
 
   @override
@@ -59,25 +62,27 @@ class _CustomTextFieldState extends State<CustomTextField> {
             children: [
               Text(widget.titleText!, style: boldTextStyle()),
               10.width,
-              Tooltip(
-                decoration: BoxDecoration(
-                  color: widget.toolTipBgColor ?? Colors.black,
-                  borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
-                ),
-                triggerMode: TooltipTriggerMode.tap,
-                padding: const EdgeInsets.all(DEFAULT_PADDING),
-                margin: const EdgeInsets.all(DEFAULT_PADDING),
-                message: widget.toolTipText ?? '',
-                child: Container(
-                  padding: const EdgeInsetsDirectional.all(5),
+              if (widget.toolTipText != null)
+                Tooltip(
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: widget.toolTipIconColor ?? Colors.grey.shade200,
+                    color: widget.toolTipBgColor ?? Colors.black,
+                    borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
                   ),
-                  child: const FaIcon(FontAwesomeIcons.question,
-                      color: Colors.grey, size: 10),
+                  triggerMode: TooltipTriggerMode.tap,
+                  padding: const EdgeInsets.all(DEFAULT_PADDING),
+                  margin: const EdgeInsetsDirectional.symmetric(
+                      horizontal: DEFAULT_PADDING),
+                  message: widget.toolTipText ?? '',
+                  child: Container(
+                    padding: const EdgeInsetsDirectional.all(5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: widget.toolTipIconColor ?? Colors.grey.shade200,
+                    ),
+                    child: const FaIcon(FontAwesomeIcons.question,
+                        color: Colors.grey, size: 10),
+                  ),
                 ),
-              ),
             ],
           ).paddingBottom(10),
         TextFormField(

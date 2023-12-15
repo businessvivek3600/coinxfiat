@@ -166,6 +166,8 @@ class AppTheme {
       filled: true,
       hintStyle: primaryTextStyle(),
       labelStyle: primaryTextStyle(),
+      contentPadding: const EdgeInsets.symmetric(
+          horizontal: DEFAULT_PADDING, vertical: DEFAULT_PADDING / 2),
       border: OutlineInputBorder(
         borderRadius: radius(DEFAULT_RADIUS),
         borderSide: BorderSide(color: set.inputBorderColor),
