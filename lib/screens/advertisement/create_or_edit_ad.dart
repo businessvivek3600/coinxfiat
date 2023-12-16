@@ -1,8 +1,8 @@
-import 'package:coinxfiat/constants/constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart';
 import '../../component/component_index.dart';
+import '../../constants/constants_index.dart';
 
 class CreateOrEditAdScreen extends StatefulWidget {
   const CreateOrEditAdScreen({super.key, this.id, required this.type});

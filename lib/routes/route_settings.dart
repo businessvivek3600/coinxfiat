@@ -189,7 +189,7 @@ final GoRouter goRouter = GoRouter(
               name: Routes.chat,
               pageBuilder: (context, state) => animatedRoute(
                   state,
-                  (state) => ChatPage(
+                  (state) => SupportChatPage(
                         title: state.uri.queryParameters['title'],
                         lastSeen: DateTime.tryParse(
                             state.uri.queryParameters['lastSeen'] ?? ''),

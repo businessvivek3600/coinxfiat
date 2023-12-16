@@ -229,7 +229,8 @@ class TradeCard extends StatelessWidget {
                   size: LABEL_TEXT_SIZE * 0.9)
               .paddingAll(DEFAULT_PADDING)
               .onTap(() {
-            context.push(Paths.tradeDetails(tradeNumber.validate()));
+            context.push(Paths.tradeDetails(
+                '1bcaa3be-1c9a-4ed3-b511-58cadcfdb4da'.validate()));
           }),
         ),
 

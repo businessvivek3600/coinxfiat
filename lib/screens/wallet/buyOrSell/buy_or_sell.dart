@@ -22,17 +22,14 @@ class BuyOrSell extends StatefulWidget {
 class _BuyOrSellState extends State<BuyOrSell>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  ValueNotifier<bool> sheetMinimized = ValueNotifier<bool>(false);
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    sheetMinimized.addListener(_handleSheetMinimized);
   }
 
-  toogleSheet() => sheetMinimized.value = !sheetMinimized.value;
-  _handleSheetMinimized() {
-    if (sheetMinimized.value) {
+  _handleSheetMinimized(bool val) {
+    if (val) {
       _tabController.animateTo(0);
       hideKeyboard(context);
     }
@@ -65,9 +62,7 @@ class _BuyOrSellState extends State<BuyOrSell>
         ],
       ),
       bottomSheet: _BuySellField(
-          selling: widget.selling,
-          toogleSheet: toogleSheet,
-          sheetMinimized: sheetMinimized),
+          selling: widget.selling, onSheetChange: _handleSheetMinimized),
     );
   }
 
@@ -155,13 +150,12 @@ class _BuyOrSellState extends State<BuyOrSell>
 class _BuySellField extends StatelessWidget {
   _BuySellField({
     super.key,
-    required this.toogleSheet,
-    required ValueNotifier<bool> sheetMinimized,
     required this.selling,
-  }) : _sheetMinimized = sheetMinimized;
+    required this.onSheetChange,
+  });
+
   final bool selling;
-  final ValueNotifier<bool> _sheetMinimized;
-  final VoidCallback toogleSheet;
+  final void Function(bool val) onSheetChange;
   final ValueNotifier<String> _selectedPaymentMethod =
       ValueNotifier<String>('');
   final ValueNotifier<String> _selectedAccount = ValueNotifier<String>('');
@@ -239,172 +233,132 @@ class _BuySellField extends StatelessWidget {
           return ValueListenableBuilder<String>(
               valueListenable: _selectedAccount,
               builder: (context, selectedAccount, child) {
-                return ValueListenableBuilder<bool>(
-                    valueListenable: _sheetMinimized,
-                    builder: (context, sheetMinimized, child) {
-                      return AnimatedContainer(
-                        duration: 200.milliseconds,
-                        padding: const EdgeInsets.all(16),
-                        height: _sheetMinimized.value
-                            ? 100
-                            : selling
-                                ? 550
-                                : 350,
-                        decoration: BoxDecoration(
-                          color: context.scaffoldBackgroundColor,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: defaultBoxShadow(
-                              offset: const Offset(0, -2),
-                              blurRadius: 20,
-                              spreadRadius: 20),
-                        ),
-                        child: SingleChildScrollView(
-                          physics: sheetMinimized
-                              ? const NeverScrollableScrollPhysics()
-                              : const AlwaysScrollableScrollPhysics(),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Text('How much you wish to buy?',
-                                      style: boldTextStyle()),
-                                  const Spacer(),
-
-                                  ///animated arrow up-down icon
-                                  AnimatedBuilder(
-                                      animation: _sheetMinimized,
-                                      builder: (context, child) {
-                                        return Container(
-                                          decoration: BoxDecoration(
-                                            color: context.primaryColor,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            _sheetMinimized.value
-                                                ? Icons.keyboard_arrow_up
-                                                : Icons.keyboard_arrow_down,
-                                            color: whiteColor,
-                                          ),
-                                        );
-                                      }),
-                                ],
-                              ).onTap(() => toogleSheet()),
-                              10.height,
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                      child: CustomTextField(
-                                    titleText: 'I Will Pay',
-                                    hintText: '0.00',
-                                    keyboardType: TextInputType.number,
-                                    suffixIcon: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('USD', style: boldTextStyle()),
-                                      ],
-                                    ).paddingSymmetric(horizontal: 10),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d+\.?\d{0,}'))
+                return ControlledBottomSheet(
+                    // sheetMinimized: _sheetMinimized,
+                    minimizedHeight: 100,
+                    maximizedHeight: selling ? 550 : 350,
+                    listener: onSheetChange,
+                    header: (_, notifier, val) => Text(
+                        'How much you wish to buy?',
+                        style: boldTextStyle()),
+                    builder: (context, notifier, sheetMinimized) {
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(DEFAULT_PADDING),
+                        physics: sheetMinimized
+                            ? const NeverScrollableScrollPhysics()
+                            : const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                    child: CustomTextField(
+                                  titleText: 'I Will Pay',
+                                  hintText: '0.00',
+                                  keyboardType: TextInputType.number,
+                                  suffixIcon: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('USD', style: boldTextStyle()),
                                     ],
-                                  )),
-                                  10.width,
+                                  ).paddingSymmetric(horizontal: 10),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d+\.?\d{0,}'))
+                                  ],
+                                )),
+                                10.width,
 
-                                  ///
-                                  Expanded(
-                                      child: CustomTextField(
-                                    titleText: 'And Receive',
-                                    hintText: '0.00',
-                                    keyboardType: TextInputType.number,
-                                    suffixIcon: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('USDT(TRC20)',
-                                            style: boldTextStyle())
-                                      ],
-                                    ).paddingSymmetric(horizontal: 10),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d+\.?\d{0,}'))
+                                ///
+                                Expanded(
+                                    child: CustomTextField(
+                                  titleText: 'And Receive',
+                                  hintText: '0.00',
+                                  keyboardType: TextInputType.number,
+                                  suffixIcon: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('USDT(TRC20)',
+                                          style: boldTextStyle())
                                     ],
-                                  )),
-                                ],
-                              ),
-                              Text('Trade Minimum limit 1000 INR',
-                                  style: boldTextStyle(
-                                      color: context.primaryColor)),
-                              10.height,
+                                  ).paddingSymmetric(horizontal: 10),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d+\.?\d{0,}'))
+                                  ],
+                                )),
+                              ],
+                            ),
+                            Text('Trade Minimum limit 1000 INR',
+                                style:
+                                    boldTextStyle(color: context.primaryColor)),
+                            10.height,
 
-                              ///if selling Select Payment Method
-                              if (selling)
-                                SearchRequestDropdown(
-                                  initialItems: paymentMethods,
-                                  onRequest: (query) async => paymentMethods
-                                      .where((element) => element.text
-                                          .toLowerCase()
-                                          .contains(query.toLowerCase()))
-                                      .toList(),
-                                  titleText: 'Select Payment Method',
-                                  hintText: 'Select Payment Method',
-                                  onChanged: (value) {
-                                    _selectedPaymentMethod.value = value!.key;
-                                    _selectedAccount.value = '';
-                                  },
-                                  sideWidget: IconButton.filled(
-                                      color: context.primaryColor,
-                                      onPressed: () => context
-                                          .push(Paths.sellAddGateway('uuts')),
-                                      icon:
-                                          const FaIcon(FontAwesomeIcons.plus)),
-                                ),
-                              10.height,
-
-                              ///if selling Select Information
-                              if (selling)
-                                SearchRequestDropdown(
-                                  initialItems: paymentAccounts[
-                                          _selectedPaymentMethod.value] ??
-                                      [],
-                                  onRequest: (query) async => 1
-                                      .seconds
-                                      .delay
-                                      .then((value) => paymentMethods
-                                          .where((element) => element.text
-                                              .toLowerCase()
-                                              .contains(query.toLowerCase()))
-                                          .toList()),
-                                  titleText: 'Select Information',
-                                  hintText: 'Select Information',
-                                ),
-                              10.height,
-
-                              const CustomTextField(
-                                hintText:
-                                    'Write your contact message and other info for the trade here',
-                                maxLines: 3,
-                                textInputAction: TextInputAction.newline,
-                                keyboardType: TextInputType.multiline,
+                            ///if selling Select Payment Method
+                            if (selling)
+                              SearchRequestDropdown(
+                                initialItems: paymentMethods,
+                                onRequest: (query) async => paymentMethods
+                                    .where((element) => element.text
+                                        .toLowerCase()
+                                        .contains(query.toLowerCase()))
+                                    .toList(),
+                                titleText: 'Select Payment Method',
+                                hintText: 'Select Payment Method',
+                                onChanged: (value) {
+                                  _selectedPaymentMethod.value = value!.key;
+                                  _selectedAccount.value = '';
+                                },
+                                sideWidget: IconButton.filled(
+                                    color: context.primaryColor,
+                                    onPressed: () => context
+                                        .push(Paths.sellAddGateway('uuts')),
+                                    icon: const FaIcon(FontAwesomeIcons.plus)),
                               ),
-                              10.height,
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                      child: ElevatedButton(
-                                    onPressed: () {},
-                                    child: Text('Send Trade Request',
-                                        style:
-                                            boldTextStyle(color: whiteColor)),
-                                  )),
-                                ],
+                            10.height,
+
+                            ///if selling Select Information
+                            if (selling)
+                              SearchRequestDropdown(
+                                initialItems: paymentAccounts[
+                                        _selectedPaymentMethod.value] ??
+                                    [],
+                                onRequest: (query) async => 1
+                                    .seconds
+                                    .delay
+                                    .then((value) => paymentMethods
+                                        .where((element) => element.text
+                                            .toLowerCase()
+                                            .contains(query.toLowerCase()))
+                                        .toList()),
+                                titleText: 'Select Information',
+                                hintText: 'Select Information',
                               ),
-                            ],
-                          ),
+                            10.height,
+
+                            const CustomTextField(
+                              hintText:
+                                  'Write your contact message and other info for the trade here',
+                              maxLines: 3,
+                              textInputAction: TextInputAction.newline,
+                              keyboardType: TextInputType.multiline,
+                            ),
+                            10.height,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                    child: ElevatedButton(
+                                  onPressed: () {},
+                                  child: Text('Send Trade Request',
+                                      style: boldTextStyle(color: whiteColor)),
+                                )),
+                              ],
+                            ),
+                          ],
                         ),
                       ).onTap(() => hideKeyboard(context));
                     });

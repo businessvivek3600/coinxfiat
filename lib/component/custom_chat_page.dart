@@ -1,30 +1,28 @@
 import 'dart:io';
 
-import 'package:coinxfiat/utils/my_logger.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
-import 'package:nb_utils/nb_utils.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
-import '../../utils/utils_index.dart';
+import '../utils/utils_index.dart';
 
-class ChatPage extends StatefulWidget {
-  const ChatPage({super.key, this.lastSeen, this.title});
-  final String? title;
-  final DateTime? lastSeen;
-
+class CustomChatWidget extends StatefulWidget {
+  const CustomChatWidget({super.key, this.appBar, this.hideInput = true});
+  final PreferredSizeWidget Function(
+      List<types.Message> messages, types.User user)? appBar;
+  final bool hideInput;
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  State<CustomChatWidget> createState() => _CustomChatWidgetState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _CustomChatWidgetState extends State<CustomChatWidget> {
   List<types.Message> _messages = [];
   final _user = const types.User(
     id: '82091008-a484-4a89-ae75-a22bf8d6f3ac',
@@ -217,33 +215,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.title ?? ''),
-              if (widget.lastSeen != null)
-                Text(
-                    'Last seen ${MyDateUtils.formatDateAsToday(widget.lastSeen!, 'dd MMM yyyy')}',
-                    style: secondaryTextStyle(color: Colors.white70)),
-            ],
-          ),
-          centerTitle: false,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.call),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.videocam),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.more_vert),
-              onPressed: () {},
-            ),
-          ],
-        ),
+        appBar: widget.appBar?.call(_messages, _user),
         body: Chat(
           messages: _messages,
           onAttachmentPressed: _handleAttachmentPressed,
@@ -253,6 +225,7 @@ class _ChatPageState extends State<ChatPage> {
           showUserAvatars: true,
           showUserNames: true,
           user: _user,
+          customBottomWidget: widget.hideInput ? null : SizedBox.shrink(),
         ),
       );
 }

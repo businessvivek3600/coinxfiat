@@ -24,6 +24,7 @@ const onGoingColor = Color(0xFFFD6922);
 const inProgressColor = Color(0xFFB953C0);
 const holdColor = Color(0xFFFFBD49);
 const cancelledColor = Color(0xffFF0303);
+const alertColor = Color(0xFFEA2F2F);
 const rejectedColor = Color(0xFF8D0E06);
 const failedColor = Color(0xFFC41520);
 const completedColor = Color(0xFF3CAE5C);

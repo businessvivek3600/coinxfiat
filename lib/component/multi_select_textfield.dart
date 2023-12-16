@@ -83,7 +83,7 @@ class _MultiSelectFieldState extends State<MultiSelectField> {
             minTextFieldWidth: 300,
             inputDecoration: InputDecoration(
               hintText: widget.hintText,
-              hintStyle: secondaryTextStyle(),
+              hintStyle: primaryTextStyle(),
               border: InputBorder.none,
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: lineColor),
