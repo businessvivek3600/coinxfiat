@@ -100,10 +100,7 @@ class MyPng {
 class MyLottie {
   static const String pageNotFound = 'data.json';
   static const String emptyBox = 'empty-box.json';
-  static const String auction = 'auction.json';
-  static const String bankTransaction = 'bank_transaction.json';
-  static const String bidSearching = 'bid-searching.json';
-  static const String reviews = 'reviews.json';
-  static const String email = 'email.json';
-  static const String successCelebration = 'success_celebration.json';
+  static const String uploadingArrow = 'uploading_arrow.json';
+  static const String uploadingCircleArrow = 'uploading_circle_arrow.json';
+  static const String uploading = 'uploading.json';
 }

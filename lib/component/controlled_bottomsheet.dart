@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:just_the_tooltip/just_the_tooltip.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../constants/constants_index.dart';
@@ -20,6 +21,8 @@ class ControlledBottomSheet extends StatefulWidget {
     this.listener,
     this.showLine = false,
     this.showButton = true,
+    this.enableDragHint = true,
+    this.toolTipText,
   }) : _sheetMinimized = sheetMinimized ?? ValueNotifier<bool>(initialValue);
   final double minimizedHeight;
   final double maximizedHeight;
@@ -30,6 +33,8 @@ class ControlledBottomSheet extends StatefulWidget {
   final Duration? duration;
   final bool showLine;
   final bool showButton;
+  final bool enableDragHint;
+  final String? toolTipText;
 
   final ValueNotifier<bool> _sheetMinimized;
   final Widget Function(
@@ -86,13 +91,28 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
                   ? Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 40,
-                          height: 5,
-                          decoration: boxDecorationWithRoundedCorners(
-                              backgroundColor: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
+                        Builder(builder: (context) {
+                          var child = Container(
+                            width: 40,
+                            height: 5,
+                            decoration: boxDecorationWithRoundedCorners(
+                                backgroundColor: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(10)),
+                          );
+                          return widget.enableDragHint
+                              ? JustTheTooltip(
+                                  content: Padding(
+                                    padding:
+                                        const EdgeInsets.all(DEFAULT_PADDING),
+                                    child: Text(
+                                        widget.toolTipText ??
+                                            'Long press to drag',
+                                        style: primaryTextStyle()),
+                                  ),
+                                  triggerMode: TooltipTriggerMode.tap,
+                                  child: child)
+                              : child;
+                        }),
                       ],
                     ).paddingBottom(10).onTap(() => toogleSheet())
                   : Row(

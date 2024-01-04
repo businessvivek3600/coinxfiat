@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -5,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:just_the_tooltip/just_the_tooltip.dart';
 import 'package:mime/mime.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
@@ -607,7 +609,7 @@ class _DefaultExpantionTile extends StatelessWidget {
 class _Chat extends StatefulWidget {
   const _Chat({Key? key, required this.loading, required this.trade})
       : super(key: key);
-  static double defaultHeight = 800;
+  static double defaultHeight = 300;
   final ValueNotifier<bool> loading;
   final Trade trade;
 
@@ -818,11 +820,12 @@ class _ChatState extends State<_Chat> {
   }
 
   void onEvent(PusherEvent event) {
-    pl('onEvent: ${event} \n ${event.data}');
     bool listen = event.channelName ==
         AppConst.pusherAppChatTopic + widget.trade.hashSlug.validate();
+    pl('onEvent: listen this:=> $listen ${event.channelName} \n ${event.data}');
     if (listen) {
-      types.Message? message = messageFromJson(event.data);
+      types.Message? message =
+          tryCatch(() => messageFromJson(jsonDecode(event.data)['message']));
       if (message != null) {
         messages.value.insert(0, message);
         setState(() {});
@@ -876,6 +879,7 @@ class _ChatState extends State<_Chat> {
                           maximizedHeight: maximumHeight,
                           showLine: false,
                           showButton: false,
+                          enableDragHint: true,
                           header: (_, notifier, sheetMinimized) => _header(
                                 notifier,
                                 sheetMinimized,
@@ -903,45 +907,57 @@ class _ChatState extends State<_Chat> {
         });
   }
 
-  Stack _header(ValueNotifier<bool> notifier, bool sheetMinimized,
+  Widget _header(ValueNotifier<bool> notifier, bool sheetMinimized,
       BuildContext context, bool dragging,
       {required String username, required bool isOnline}) {
-    return Stack(
-      children: [
-        _CustomChatHeader(
-          notifier: notifier,
-          val: sheetMinimized,
-          username: username,
-          isOnline: isOnline,
-        ),
+    return JustTheTooltip(
+      content: Padding(
+        padding: const EdgeInsets.all(DEFAULT_PADDING),
+        child:
+            Text('Long press and drag up and down', style: primaryTextStyle()),
+      ),
+      triggerMode: TooltipTriggerMode.tap,
+      tailBuilder: JustTheInterface.defaultBezierTailBuilder,
+      preferredDirection: AxisDirection.up,
+      child: LongPressDraggable(
+          feedback: Container(height: 30),
+          onDragUpdate: (details) {
+            double height = context.height() - details.globalPosition.dy;
+            if (height > 0 && height > 300) {
+              _maximumHeight.value = height;
+            }
+          },
+          onDragStarted: () => _dragging.value = true,
+          onDragEnd: (details) => _dragging.value = false,
+          child: Center(
+              child: AnimatedScale(
+            scale: dragging ? 1.5 : 1,
+            duration: const Duration(milliseconds: 200),
+            child: Stack(
+              children: [
+                _CustomChatHeader(
+                  notifier: notifier,
+                  val: sheetMinimized,
+                  username: username,
+                  isOnline: isOnline,
+                ),
 
-        ///drag handle
-        if (!sheetMinimized)
-          Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: LongPressDraggable(
-                  feedback: Container(
-                    height: 30,
-                  ),
-                  onDragUpdate: (details) {
-                    double height =
-                        context.height() - details.globalPosition.dy;
-                    if (height > 0 && height > 300) {
-                      _maximumHeight.value = height;
-                    }
-                  },
-                  onDragStarted: () => _dragging.value = true,
-                  onDragEnd: (details) => _dragging.value = false,
-                  child: Center(
-                      child: AnimatedScale(
-                    scale: dragging ? 1.2 : 1,
-                    duration: const Duration(milliseconds: 200),
-                    child: const FaIcon(FontAwesomeIcons.gripLines,
-                        color: Colors.grey),
-                  )))),
-      ],
+                ///drag handle
+                if (!sheetMinimized)
+                  Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                          child: AnimatedScale(
+                        scale: dragging ? 0.8 : 1,
+                        duration: const Duration(milliseconds: 200),
+                        child: const FaIcon(FontAwesomeIcons.gripLines,
+                            color: Colors.grey, size: 30),
+                      ))),
+              ],
+            ),
+          ))),
     );
   }
 }

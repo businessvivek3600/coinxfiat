@@ -41,6 +41,8 @@ class CustomChatWidget extends StatefulWidget {
 
 class _CustomChatWidgetState extends State<CustomChatWidget> {
   final chatController = TextEditingController();
+  ValueNotifier<bool> sendingText = ValueNotifier(false);
+  ValueNotifier<bool> sendingFile = ValueNotifier(false);
   // final widget.user = const types.User(
   //   id: '82091008-a484-4a89-ae75-a22bf8d6f3ac',
   // );
@@ -65,10 +67,22 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
     setState(() {});
   }
 
+  sendFileMessages() async {
+    widget.enableImageSelection && widget.enableFileSelection
+        ? _handleAttachmentPressed()
+        : widget.enableImageSelection
+            ? _handleImageSelection()
+            : widget.enableFileSelection
+                ? _handleFileSelection()
+                : null;
+  }
+
   void _handleImageSelection() async {
     final result = await ImagePicker().pickImage(
         imageQuality: 70, maxWidth: 1440, source: ImageSource.gallery);
-    widget.onSendPressed(result);
+    sendingFile.value = true;
+    await widget.onSendPressed(result);
+    sendingFile.value = false;
     return;
 
     if (result != null) {
@@ -149,10 +163,11 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
   }
 
   void _handleSendPressed(types.PartialText message) async {
-    if (message.text.trim().isEmpty) {
-      return;
-    }
+    if (message.text.trim().isEmpty) return;
+    chatController.clear();
+    sendingText.value = true;
     await widget.onSendPressed(message.text.trim());
+    sendingText.value = false;
     // final textMessage = types.TextMessage(
     //   author: widget.user,
     //   createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -161,7 +176,6 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
     // );
 
     // _addMessage(textMessage);
-    // chatController.clear();
   }
 
   void _loadMessages() async {
@@ -217,7 +231,9 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
 
   void _handleFileSelection() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
-    widget.onSendPressed(result);
+    sendingFile.value = true;
+    await widget.onSendPressed(result);
+    sendingFile.value = false;
     return;
     if (result != null && result.files.single.path != null) {
       final message = types.FileMessage(
@@ -283,66 +299,87 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
     );
   }
 
-  Container _customBottomWidget(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: DEFAULT_PADDING / 2),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: const BorderRadiusDirectional.vertical(
-            top: Radius.circular(DEFAULT_PADDING)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            blurRadius: 5,
-            spreadRadius: 1,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      width: context.width(),
-      child: Row(
-        children: [
-          IconButton(
-              // onPressed: _handleAttachmentPressed,
-              onPressed:
-                  widget.enableImageSelection && widget.enableFileSelection
-                      ? _handleAttachmentPressed
-                      : widget.enableImageSelection
-                          ? _handleImageSelection
-                          : widget.enableFileSelection
-                              ? _handleFileSelection
-                              : null,
-              icon: const FaIcon(FontAwesomeIcons.fileCirclePlus,
-                  color: Colors.white)),
-          Expanded(
-            child: TextField(
-              controller: chatController,
-              decoration: const InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                border: InputBorder.none,
-                hintText: 'Type a message',
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: () => _handleSendPressed(
-                types.PartialText(text: chatController.text.trim())),
-            icon: Transform.rotate(
-              angle: -3.14 / 5,
-              child: const Icon(
-                Icons.send,
-                color: Color.fromARGB(255, 250, 250, 250),
-              ),
-            ),
-          ),
-        ],
-      ).paddingBottom(MediaQuery.of(context).viewInsets.bottom > 0
-          ? 0
-          : (defaultTargetPlatform == TargetPlatform.iOS
-              ? DEFAULT_PADDING
-              : 0)),
-    );
+  Widget _customBottomWidget(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+        valueListenable: sendingText,
+        builder: (_, sending, __) {
+          return ValueListenableBuilder<bool>(
+              valueListenable: sendingFile,
+              builder: (_, sendingfile, __) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: DEFAULT_PADDING / 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: const BorderRadiusDirectional.vertical(
+                        top: Radius.circular(DEFAULT_PADDING)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.5),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  width: context.width(),
+                  child: Row(
+                    children: [
+                      if (sendingfile)
+                        SizedBox(
+                                height: 24,
+                                width: 24,
+                                child:
+                                    assetLottie(MyLottie.uploadingCircleArrow)
+                                // CircularProgressIndicator(
+                                // backgroundColor: Colors.white, strokeWidth: 2),
+                                )
+                            .paddingAll(DEFAULT_PADDING / 1.5)
+                      else
+                        IconButton(
+                            // onPressed: _handleAttachmentPressed,
+                            onPressed: sendFileMessages,
+                            icon: const FaIcon(FontAwesomeIcons.fileCirclePlus,
+                                color: Colors.white)),
+                      Expanded(
+                        child: TextField(
+                          controller: chatController,
+                          decoration: const InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: InputBorder.none,
+                            hintText: 'Type a message',
+                          ),
+                        ),
+                      ),
+                      if (sending)
+                        const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                              backgroundColor: Colors.white, strokeWidth: 2),
+                        ).paddingAll(DEFAULT_PADDING / 1.5)
+                      else
+                        IconButton(
+                          onPressed: () => _handleSendPressed(types.PartialText(
+                              text: chatController.text.trim())),
+                          icon: Transform.rotate(
+                            angle: -3.14 / 5,
+                            child: const Icon(
+                              Icons.send,
+                              color: Color.fromARGB(255, 250, 250, 250),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ).paddingBottom(MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 0
+                      : (defaultTargetPlatform == TargetPlatform.iOS
+                          ? DEFAULT_PADDING
+                          : 0)),
+                );
+              });
+        });
   }
 }
 
