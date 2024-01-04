@@ -1,3 +1,5 @@
+import 'package:coinxfiat/services/auth_services.dart';
+import 'package:coinxfiat/store/store_index.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,41 +21,62 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _phoneCodeController = TextEditingController();
   final _phoneNumberController = TextEditingController();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _preferredLanguageController = TextEditingController();
   final _addressController = TextEditingController();
   final ValueNotifier<bool> _submittingForm = ValueNotifier<bool>(false);
 
+  @override
+  void initState() {
+    super.initState();
+    afterBuildCreated(() {
+      _firstNameController.text = appStore.userFirstName;
+      _lastNameController.text = appStore.userLastName;
+      _usernameController.text = appStore.userName;
+      _phoneCodeController.text = appStore.phoneCode;
+      _phoneNumberController.text =
+          '${appStore.currencyCode} ${appStore.userContactNumber}';
+      _emailController.text = appStore.userEmail;
+      _addressController.text = appStore.address;
+      _preferredLanguageController.text = 'English';
+    });
+  }
+
   _submit() async {
     FocusScope.of(context).unfocus();
     _submittingForm.value = true;
-    await 3.seconds.delay;
-    _submittingForm.value = false;
+
     if (!_key.currentState!.validate()) {
       setState(() {});
+      _submittingForm.value = false;
       return;
     }
-
-    setState(() {
-      _key.currentState!.save();
-    });
-
-    FocusScope.of(context)
-      ..nextFocus()
-      ..unfocus();
+    setState(() => _key.currentState!.save());
+    var data = {
+      'firstname': _firstNameController.text,
+      'lastname': _lastNameController.text,
+      'phone_code': _phoneCodeController.text,
+      'phone': _phoneNumberController.text,
+      'language_id': '1',
+      'address': _addressController.text,
+    };
 
     const successSnackBar = SnackBar(
-      content: Text('Submitted successfully! 🎉'),
-    );
-    const failureSnackBar = SnackBar(
-      content: Text('Something went wrong... 🚨'),
-    );
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(successSnackBar);
+        content: Text('Profile update successfully! 🎉'),
+        backgroundColor: Colors.green);
+    await AuthService().updateProfile(data).then((value) {
+      FocusScope.of(context)
+        ..nextFocus()
+        ..unfocus();
+      if (value) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(successSnackBar);
+      }
+    });
+    _submittingForm.value = false;
   }
 
   @override
@@ -111,34 +134,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       prefixIcon: FontAwesomeIcons.user,
                     ),
 
-                    /// Username
-                    _textField(
-                      context,
-                      controller: _usernameController,
-                      title: 'Username',
-                      helperText:
-                          'Only alphabets are allowed. No special characters',
-                      readOnly: false,
-                      prefixIcon: FontAwesomeIcons.user,
-                      keyboardType: TextInputType.text,
-                      validator: (value) => value?.isEmpty == true
-                          ? 'Please enter your username'
-                          : null,
-                    ),
-
-                    /// Phone Number
-                    _textField(
-                      context,
-                      controller: _phoneNumberController,
-                      title: 'Phone Number',
-                      helperText:
-                          'Only numbers are allowed. No special characters',
-                      readOnly: false,
-                      prefixIcon: FontAwesomeIcons.phone,
-                      keyboardType: TextInputType.phone,
-                      validator: (value) => value?.isEmpty == true
-                          ? 'Please enter your phone number'
-                          : null,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ///phone code
+                        Container(
+                          constraints: const BoxConstraints(maxWidth: 100),
+                          child: _textField(
+                            context,
+                            controller: _phoneCodeController,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            title: 'Phone Code',
+                            hintText: '+91',
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return '* required';
+                              }
+                              return null;
+                            },
+                            prefixIcon: Icons.pin,
+                            readOnly: false,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _textField(
+                            context,
+                            controller: _phoneNumberController,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            title: 'Phone Number',
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return '* required';
+                              }
+                              return null;
+                            },
+                            prefixIcon: Icons.phone,
+                            readOnly: false,
+                          ),
+                        ),
+                      ],
                     ),
 
                     /// Email Address
@@ -147,26 +184,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       controller: _emailController,
                       title: 'Email Address',
                       helperText: 'A valid email e.g. user@gmail.com',
-                      readOnly: false,
+                      readOnly: true,
                       prefixIcon: FontAwesomeIcons.envelope,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) => value?.isEmpty == true
                           ? 'Please enter your email'
-                          : null,
-                    ),
-
-                    /// Password
-                    _textField(
-                      context,
-                      controller: _passwordController,
-                      title: 'Password',
-                      helperText:
-                          'At least 8 characters including one letter and number',
-                      readOnly: false,
-                      prefixIcon: FontAwesomeIcons.lock,
-                      keyboardType: TextInputType.visiblePassword,
-                      validator: (value) => value?.isEmpty == true
-                          ? 'Please enter your password'
                           : null,
                     ),
 
@@ -176,7 +198,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       controller: _preferredLanguageController,
                       title: 'Preferred Language',
                       helperText: 'Select your preferred language',
-                      readOnly: false,
+                      readOnly: true,
                       prefixIcon: FontAwesomeIcons.language,
                       keyboardType: TextInputType.text,
                       validator: (value) => value?.isEmpty == true
@@ -209,7 +231,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     TextInputAction? textInputAction,
     TextInputType? keyboardType,
     required String title,
-    required String helperText,
+    String? hintText,
+    String? helperText,
     required bool readOnly,
     required IconData prefixIcon,
     String? Function(String?)? validator,
@@ -218,10 +241,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        Text(title, style: boldTextStyle()),
         height5(),
         Container(
           margin: const EdgeInsets.only(bottom: DEFAULT_PADDING),
@@ -234,8 +254,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             decoration: InputDecoration(
               isDense: true,
               filled: true,
+              fillColor: readOnly ? Colors.grey.shade200 : Colors.white,
               prefixIcon: FaIcon(prefixIcon).paddingAll(DEFAULT_PADDING),
-              hintText: title,
+              hintText: hintText ?? title,
               helperText: helperText,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

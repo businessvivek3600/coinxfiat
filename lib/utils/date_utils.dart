@@ -24,7 +24,7 @@ class MyDateUtils {
   /// Find time Difference in between [Today and the given date-time] in format of today, yesterday otherwise dd/MM/yyyy
   static String formatDateAsToday(dynamic dt,
       [String? format, bool getToday = false]) {
-    DateTime? dateTime = dt is DateTime ? dt : DateTime.tryParse(dt);
+    DateTime? dateTime = dt is DateTime ? dt : DateTime.tryParse(dt ?? '');
     if (dateTime != null) {
       final now = DateTime.now();
       if (dateTime.year == now.year &&

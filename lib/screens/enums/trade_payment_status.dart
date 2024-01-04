@@ -18,7 +18,7 @@ extension TradePaymentStatusExt on TradePaymentStatus {
       case TradePaymentStatus.completed:
         return 'Completed';
       default:
-        return 'Default';
+        return 'Unknown';
     }
   }
 

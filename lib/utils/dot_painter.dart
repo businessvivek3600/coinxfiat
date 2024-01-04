@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:path_drawing/path_drawing.dart';
@@ -233,10 +232,10 @@ class DashedPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(DashedPainter oldDelegate) {
-    return oldDelegate.strokeWidth != this.strokeWidth ||
-        oldDelegate.color != this.color ||
-        oldDelegate.dashPattern != this.dashPattern ||
-        oldDelegate.padding != this.padding ||
-        oldDelegate.borderType != this.borderType;
+    return oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.color != color ||
+        oldDelegate.dashPattern != dashPattern ||
+        oldDelegate.padding != padding ||
+        oldDelegate.borderType != borderType;
   }
 }

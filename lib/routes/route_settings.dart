@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:coinxfiat/constants/constants_index.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import 'package:nb_utils/nb_utils.dart';
 
 import '../main.dart';
 import '../screens/screen_index.dart';
+import '../store/store_index.dart';
 import '../utils/utils_index.dart';
 import '../widgets/widget_index.dart';
 import 'route_index.dart';
@@ -32,12 +34,25 @@ final GoRouter goRouter = GoRouter(
         GoRoute(
           path: Routes.walletDetails,
           name: Routes.walletDetails,
-          pageBuilder: (context, state) => animatedRoute(
-              state,
-              (state) => WalletDetails(
-                    title: state.uri.queryParameters['title'],
-                    subTitle: state.uri.queryParameters['subTitle'],
-                  )),
+          redirect: (context, state) => Paths.walletDetails(
+            state.pathParameters['code'] ?? '-',
+            title: state.uri.queryParameters['name'],
+            address: state.uri.queryParameters['address'],
+            bal: state.uri.queryParameters['bal'],
+          ),
+          routes: [
+            GoRoute(
+              path: ':code',
+              pageBuilder: (context, state) => animatedRoute(
+                  state,
+                  (state) => WalletDetails(
+                        code: state.pathParameters['code'] ?? '-',
+                        name: state.uri.queryParameters['name'],
+                        address: state.uri.queryParameters['address'],
+                        bal: state.uri.queryParameters['bal'],
+                      )),
+            ),
+          ],
         ),
 
         ///my holdings
@@ -54,19 +69,18 @@ final GoRouter goRouter = GoRouter(
           name: Routes.buyOrSell,
           pageBuilder: (context, state) => animatedRoute(
               state,
-              (state) => BuyOrSell(
+              (state) => BuyOrSellRequestPage(
                   selling:
-                      (state.pathParameters['type'] ?? 'sell').toLowerCase() ==
-                          'sell')),
+                      (state.pathParameters['type']!).toLowerCase() == 'sell')),
           routes: [
             GoRoute(
               path: ':requestId',
               pageBuilder: (context, state) => animatedRoute(
                   state,
-                  (state) => BuyOrSell(
-                        selling: (state.pathParameters['type'] ?? 'sell')
-                                .toLowerCase() ==
-                            'sell',
+                  (state) => BuyOrSellRequestPage(
+                        selling:
+                            (state.pathParameters['type']!).toLowerCase() ==
+                                'sell',
                         requestId: state.pathParameters['requestId'],
                       )),
             ),
@@ -143,7 +157,7 @@ final GoRouter goRouter = GoRouter(
               state.uri.queryParameters['adId']),
           routes: [
             GoRoute(
-              path: ':type(running|completed|all)',
+              path: ':type(running|complete|all)',
               pageBuilder: (context, state) => animatedRoute(
                   state,
                   (state) => TradeList(
@@ -216,8 +230,11 @@ final GoRouter goRouter = GoRouter(
     GoRoute(
       path: Paths.login,
       name: Routes.login,
-      pageBuilder: (context, state) => animatedRoute(state,
-          (state) => const AuthScreen(login: true, returnExpected: false)),
+      pageBuilder: (context, state) => animatedRoute(
+          state,
+          (state) => AuthScreen(
+              returnPath: state.uri.queryParameters['then'] ?? '',
+              returnExpected: false)),
     ),
 
     ///company
@@ -234,10 +251,16 @@ final GoRouter goRouter = GoRouter(
   initialLocation: Paths.splash,
   redirect: _redirect,
 );
+Future<bool> checkLogin() async {
+  await appStore.setLoggedIn(getBoolAsync(IS_LOGGED_IN));
+  return appStore.isLoggedIn;
+}
 
 ///Global redirect
 Future<String?> _redirect(BuildContext context, GoRouterState state) async {
-  logger.i('_redirect',
+  bool loggedIn = await checkLogin();
+
+  logger.i('_redirect logged in => $loggedIn',
       error: {
         'location': state.fullPath,
         'matchedLocation': state.matchedLocation,
@@ -247,7 +270,6 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
       tag: 'My Router');
   String path = state.matchedLocation;
   if (path == Paths.splash) return Paths.splash;
-  bool loggedIn = appStore.isLoggedIn;
 
   if (_loginPaths(path)) {
     if (loggedIn) {

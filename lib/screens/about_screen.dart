@@ -4,6 +4,7 @@ import 'package:coinxfiat/utils/size_utils.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../database/database_index.dart';
+import '../store/store_index.dart';
 import '/main.dart';
 import '/utils/colors.dart';
 import 'package:flutter/material.dart';

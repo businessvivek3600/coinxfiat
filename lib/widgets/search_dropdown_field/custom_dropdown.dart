@@ -224,14 +224,15 @@ class CustomDropdown<T> extends StatefulWidget {
     this.hideSelectedFieldWhenExpanded = false,
     this.closedFillColor = Colors.white,
     this.expandedFillColor = Colors.white,
-  })  : assert(
-          items!.isNotEmpty,
-          'Items list must contain at least one item.',
-        ),
-        assert(
-          initialItem == null || items!.contains(initialItem),
-          'Initial item must match with one of the item in items list.',
-        ),
+  })  :
+        //  assert(
+        //         items!.isNotEmpty,
+        //         'Items list must contain at least one item.',
+        //       ),
+        //       assert(
+        //         initialItem == null || items!.contains(initialItem),
+        //         'Initial item must match with one of the item in items list.',
+        //       ),
         _searchType = _SearchType.onListData,
         futureRequest = null,
         futureRequestDelay = null,
@@ -323,9 +324,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
                   if (widget.onChanged != null) {
                     widget.onChanged!(value);
                   }
-
                   formFieldState.didChange(value);
-
                   if (widget.validateOnChange) {
                     formFieldState.validate();
                   }

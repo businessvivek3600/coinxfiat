@@ -5,16 +5,23 @@ import '../utils/utils_index.dart';
 
 class AppConst {
   static const tag = 'AppConst';
-  static String appName = "Auction App";
+  static String appName = "CoinXFiat";
   static const String appVersion = "1.0.0";
-  static const String packageName = "com.arthurmaurice.flutter_app";
-  static const String appStoreId = "auction/1234567890";
-  static String appDescription = "Flutter App Description";
+  static const String packageName = "com.arthurmaurice.coinxfiat";
+  static const String appStoreId = "coinxfiat/id0000000000";
+  static String appDescription = "A crypto currency app";
   static const String appIcon = "assets/images/logo-no-background.png";
 
+  ///pusher details
+  static const pusherAppId = '1648827';
+  static const pusherAppKey = 'e46752839af82d018fea';
+  static const pusherAppSecret = '529021ad717d16ad7c32';
+  static const pusherAppCluster = 'ap2';
+  static const pusherAppChatTopic = 'offer-chat-notification.';
+
   ///api
-  static const String baseUrl = "https://arthurmaurice.com/api/";
-  static const String siteUrl = "https://arthurmaurice.com";
+  static const String baseUrl = "https://p2p.coinxfiat.com/api/";
+  static const String siteUrl = "https://p2p.coinxfiat.com/";
   static const String apiVersion = "v1";
 
   static String currencySymbol = '';
@@ -22,7 +29,7 @@ class AppConst {
 
   static String testerEmail = 'demo@gmail.com';
 
-  static Color defaultPrimaryColor = Color(0xFF0C2139);
+  static Color defaultPrimaryColor = const Color(0xFF0C2139);
 
   static Future<void> readStringsXml() async {
     // Specify the path to strings.xml

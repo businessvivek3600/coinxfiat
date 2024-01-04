@@ -125,8 +125,9 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
                       ],
                     ).paddingAll(10),
               Expanded(
-                  child: widget.builder(
-                      context, widget._sheetMinimized, sheetMinimized)),
+                child: widget.builder(
+                    context, widget._sheetMinimized, sheetMinimized),
+              ),
             ],
           ),
         );

@@ -1,6 +1,7 @@
 import 'package:coinxfiat/constants/constants_index.dart';
 import 'package:coinxfiat/main.dart';
 
+import '../store/store_index.dart';
 import '/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -108,10 +109,11 @@ class AppTheme {
 
       ///appbar
       appBarTheme: AppBarTheme(
-          foregroundColor: set.appBarTextColor,
-          backgroundColor: set.appBarColor,
-          systemOverlayStyle: const SystemUiOverlayStyle(
-              statusBarIconBrightness: Brightness.light)),
+        foregroundColor: set.appBarTextColor,
+        backgroundColor: set.appBarColor,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarIconBrightness: Brightness.light),
+      ),
       scaffoldBackgroundColor: set.scaffoldColor,
       fontFamily: set.fontFamily,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
@@ -133,7 +135,8 @@ class AppTheme {
       cardColor: set.cardColor,
       floatingActionButtonTheme:
           FloatingActionButtonThemeData(backgroundColor: set.primaryColor),
-      dialogTheme: DialogTheme(shape: dialogShape()),
+      dialogTheme: DialogTheme(shape: dialogShape(20)),
+
       navigationBarTheme: NavigationBarThemeData(
           labelTextStyle: MaterialStateProperty.all(
               primaryTextStyle(size: 10, color: set.navigationBarLabelColor)),
@@ -155,6 +158,24 @@ class AppTheme {
         ),
       ),
       inputDecorationTheme: inputDecorationTheme(set),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: set.dialogBackgroundColor,
+          borderRadius: radius(DEFAULT_RADIUS),
+          boxShadow: [
+            BoxShadow(
+                color: set.shadowColor.withOpacity(0.5),
+                spreadRadius: 5,
+                blurRadius: 15,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        // triggerMode: TooltipTriggerMode.tap,
+        padding: const EdgeInsets.all(DEFAULT_PADDING),
+        margin:
+            const EdgeInsetsDirectional.symmetric(horizontal: DEFAULT_PADDING),
+        textStyle: primaryTextStyle(),
+      ),
     );
     return themeData;
   }
@@ -164,7 +185,7 @@ class AppTheme {
     return InputDecorationTheme(
       fillColor: set.inputFillColor,
       filled: true,
-      hintStyle: primaryTextStyle(),
+      hintStyle: secondaryTextStyle(),
       labelStyle: primaryTextStyle(),
       contentPadding: const EdgeInsets.symmetric(
           horizontal: DEFAULT_PADDING, vertical: DEFAULT_PADDING / 2),
@@ -211,6 +232,7 @@ class ThemeSetColor {
   final Color navigationBarBackgroundColor;
   final Color inputFillColor;
   final Color inputBorderColor;
+  final Color shadowColor;
 
   ThemeSetColor({
     this.brightness = Brightness.light,
@@ -239,6 +261,7 @@ class ThemeSetColor {
     required this.navigationBarBackgroundColor,
     this.inputFillColor = Colors.white12,
     this.inputBorderColor = Colors.black12,
+    this.shadowColor = Colors.grey,
   }) {
     fontFamily = fontFamily ?? GoogleFonts.workSans().fontFamily;
   }

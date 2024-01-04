@@ -16,7 +16,7 @@ class MyPng {
   static const short = 'app/short.png';
 
   ///user-related images
-  static const dummyUser = 'dummyUser.png';
+  static const dummyUser = 'icons/ic_notification_user.png';
 
   ///onBoarding images
   static const onBoarding1 = 'onBoarding_1.png';
@@ -99,7 +99,7 @@ class MyPng {
 
 class MyLottie {
   static const String pageNotFound = 'data.json';
-  static const String bid = 'bid.json';
+  static const String emptyBox = 'empty-box.json';
   static const String auction = 'auction.json';
   static const String bankTransaction = 'bank_transaction.json';
   static const String bidSearching = 'bid-searching.json';

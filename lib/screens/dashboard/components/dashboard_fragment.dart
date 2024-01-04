@@ -1,12 +1,16 @@
+import 'package:coinxfiat/services/service_index.dart';
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../../../component/component_index.dart';
 import '../../../constants/constants_index.dart';
+import '../../../model/model_index.dart';
 import '../../../routes/route_index.dart';
+import '../../../store/store_index.dart';
 import '../../screen_index.dart';
 
 class DashboardFragment extends StatefulWidget {
@@ -31,6 +35,9 @@ class _DashboardFragmentState extends State<DashboardFragment>
   @override
   void initState() {
     super.initState();
+    dashboardStore.getDashboardData();
+
+// appStore
     afterBuildCreated(() {
       defaultTopPadding = context.height() * 0.3;
       _topPadding = defaultTopPadding;
@@ -48,20 +55,32 @@ class _DashboardFragmentState extends State<DashboardFragment>
   }
 
   @override
+  void dispose() {
+    _scrollController.removeListener(() => _listenForScroll());
+    _scrollController.dispose();
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(color: context.scaffoldBackgroundColor),
+    return Observer(
+      builder: (_) => Stack(
+        children: [
+          Container(color: context.scaffoldBackgroundColor),
 
-        /// This is the main content
-        _Header(setDefaultHight: (double hight) {}),
+          /// This is the main content
+          _Header(setDefaultHight: (double hight) {}),
 
-        /// This is the trade counts card list in horizontal
-        _RestBody(
+          /// This is the trade counts card list in horizontal
+          _RestBody(
             topPadding:
                 _topPadding >= kToolbarHeight ? _topPadding : kToolbarHeight,
-            scrollController: _scrollController),
-      ],
+            scrollController: _scrollController,
+            loading: dashboardStore.isLoading,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -69,13 +88,16 @@ class _DashboardFragmentState extends State<DashboardFragment>
 class _RestBody extends StatelessWidget {
   const _RestBody({
     super.key,
+    required bool loading,
     required double topPadding,
     required ScrollController scrollController,
   })  : _topPadding = topPadding,
+        _loading = loading,
         _scrollController = scrollController;
 
   final double _topPadding;
   final ScrollController _scrollController;
+  final bool _loading;
 
   @override
   Widget build(BuildContext context) {
@@ -98,16 +120,21 @@ class _RestBody extends StatelessWidget {
                       color: getTheme(context).colorScheme.secondary,
                       width: DEFAULT_RADIUS))),
           child: AnimatedScrollView(
+            fadeInConfiguration: FadeInConfiguration(
+                delay: 100.microseconds,
+                duration: 100.milliseconds,
+                curve: Curves.fastOutSlowIn),
             listAnimationType: ListAnimationType.FadeIn,
             padding: EdgeInsets.zero,
             controller: _scrollController,
+            disposeScrollController: false,
             children: [
               height10(),
               _countList(context),
 
               ///dummy container
               titleLargeText('My Wallets', context).paddingAll(DEFAULT_PADDING),
-              _walletList(context),
+              _walletList(context, loading: _loading),
 
               ///Last 10 Trade Lists
               height10(),
@@ -123,7 +150,7 @@ class _RestBody extends StatelessWidget {
                 ],
               ),
               height10(),
-              ..._last10Trades(context),
+              ..._last10Trades(context, loading: _loading),
               height50(),
             ],
           ),
@@ -132,31 +159,42 @@ class _RestBody extends StatelessWidget {
     );
   }
 
-  List<Widget> _last10Trades(BuildContext context) {
-    return List.generate(
-      10,
-      (index) => TradeCard(
-        tradeNumber: 'YCWKP6722XSN',
-        withUser: 'userAway',
-        type: index % 2 == 0 ? 'Buy' : 'Sell',
-        currency: 'INR',
-        paymentMethod: 'Bank Transfer',
-        rate: '${1100.02 * (index + 1)} INR / ETH',
-        cryptoAmount: '${0.10005000 * index} ETH',
-        status: index % 3 == 0
-            ? 'Completed'
-            : index % 3 == 2
-                ? 'Running'
-                : 'Pending',
-        requestedOn: DateTime.now().subtract(Duration(days: index)).toString(),
-        onActionPressed: () {
-          print('trade card pressed');
-        },
-      ),
-    );
+  List<Widget> _last10Trades(BuildContext context, {required bool loading}) {
+    List<Trade> trades = dashboardStore.tradeList;
+    return trades.isNotEmpty
+        ? trades.take(10).indexed.map((e) {
+            Trade trade = e.$2;
+            return TradeCard(
+              loading: loading,
+              isActive: trade.sender?.status == 1,
+              hashSlug: trade.hashSlug,
+              tradeNumber: trade.tradeNumber,
+              withUser: trade.sender?.username ?? 'Unknown',
+              type: trade.type,
+              currency: trade.currency?.code,
+              paymentMethods: trade.gateways ?? [],
+              rate:
+                  '${(trade.rate).convertDouble(8)} ${trade.currency?.code ?? ''} / ${trade.receiverCurrency?.code ?? ''}',
+              cryptoAmount:
+                  '${(trade.receiveAmount.convertDouble(8))} ${trade.receiverCurrency?.code ?? ''}',
+              status: trade.status,
+              totalTrades: trade.sender?.totalTrade ?? 0,
+              completedTrade: trade.sender?.completedTrade ?? 0,
+              requestedOn: trade.createdAt,
+              onActionPressed: () {},
+            );
+          }).toList()
+        : [
+            SizedBox(
+              height: context.height() * 0.2,
+              child: Center(
+                child: bodyMedText('No Trade Found', context),
+              ),
+            )
+          ];
   }
 
-  Widget _walletList(BuildContext context) {
+  Widget _walletList(BuildContext context, {required bool loading}) {
     return Container(
       height: context.height() * 0.15,
       margin: const EdgeInsets.only(left: 0, right: 0),
@@ -164,41 +202,24 @@ class _RestBody extends StatelessWidget {
         padding: const EdgeInsets.only(left: DEFAULT_PADDING),
         scrollDirection: Axis.horizontal,
         children: [
-          ///Bitcoin
-          WalletCard(
-            title: 'Bitcoin',
-            subTitle: 'BTC',
-            amount: '0.0000978738',
-            image: MyPng.coinDummy,
-            onTap: () => context.pushNamed(
-              Routes.walletDetails,
-              queryParameters: {'title': 'Bitcoin', 'subTitle': 'BTC'},
-            ),
-          ),
-
-          ///Ethereum
-          WalletCard(
-            title: 'Ethereum',
-            subTitle: 'ETH',
-            amount: '38468320000',
-            image: MyPng.coinDummy,
-            onTap: () => context.pushNamed(
-              Routes.walletDetails,
-              queryParameters: {'title': 'Ethereum', 'subTitle': 'ETH'},
-            ),
-          ),
-
-          ///Tether
-          WalletCard(
-            title: 'Tether',
-            subTitle: 'USDT',
-            amount: '3572.000',
-            image: MyPng.coinDummy,
-            onTap: () => context.pushNamed(
-              Routes.walletDetails,
-              queryParameters: {'title': 'Tether', 'subTitle': 'USDT'},
-            ),
-          ),
+          ...dashboardStore.walletList.indexed.map((e) {
+            Wallet wallet = e.$2;
+            return WalletCard(
+              loading: loading,
+              title: wallet.crypto?.name ?? '',
+              subTitle: wallet.crypto?.code ?? '',
+              amount: wallet.balance.convertDouble(8),
+              image: wallet.crypto?.imageUrl ?? '',
+              onTap: () => context.push(
+                Paths.walletDetails(
+                  wallet.crypto?.code ?? '',
+                  title: wallet.crypto?.name ?? '',
+                  address: wallet.walletAddress ?? '',
+                  bal: wallet.balance.convertDouble(8).toString(),
+                ),
+              ),
+            );
+          }).toList(),
         ],
       ),
     );
@@ -213,30 +234,34 @@ class _RestBody extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         children: [
           ///trade count card
-          _countCard(
-              context, 'Trade\nCount', '10', MyPng.icDocument, Colors.pink,
+          _countCard(context, 'Trade\nCount', dashboardStore.totalTrade,
+              MyPng.icDocument, Colors.pink,
               onTap: () {}),
 
           ///Running Trades
-          _countCard(context, 'Running\nTrades', '5',
+          _countCard(context, 'Running\nTrades', dashboardStore.runningTrade,
               FontAwesomeIcons.solidCircleCheck, runningColor,
               onTap: () {}),
 
           ///Completed Trades
-          _countCard(context, 'Completed\nTrades', '29',
-              FontAwesomeIcons.sellsy, Colors.greenAccent.shade700,
+          _countCard(
+              context,
+              'Completed\nTrades',
+              dashboardStore.completedTrade,
+              FontAwesomeIcons.sellsy,
+              Colors.greenAccent.shade700,
               onTap: () {}),
 
           ///Complete Trades
-          _countCard(context, 'Total\nReferral', '23', FontAwesomeIcons.users,
-              Colors.cyanAccent.shade700,
+          _countCard(context, 'Total\nReferral', dashboardStore.totalReferral,
+              FontAwesomeIcons.users, Colors.cyanAccent.shade700,
               onTap: () {}),
         ],
       ),
     );
   }
 
-  Widget _countCard(BuildContext context, String title, String value,
+  Widget _countCard(BuildContext context, String title, dynamic value,
       dynamic icon, Color color,
       {void Function()? onTap}) {
     return Stack(
@@ -254,7 +279,7 @@ class _RestBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               titleLargeText(title, context, textAlign: TextAlign.center),
-              bodyMedText(value, context),
+              bodyMedText(value.toString(), context),
             ],
           ),
         ).onTap(onTap),
@@ -331,7 +356,8 @@ class _Header extends StatelessWidget {
                                 }),
                               ),
                               width10(),
-                              bodyLargeText('Hi, John Doe', context,
+                              bodyLargeText(
+                                  'Hi, ${appStore.userFullName}', context,
                                   color: Colors.white),
                             ],
                           ),
@@ -358,7 +384,7 @@ class _Header extends StatelessWidget {
                     Expanded(
                         flex: 1,
                         child: assetImages(MyPng.referandearn).onTap(() {
-                          print('refer and earn tapped');
+                          AuthService().login('email', 'password');
                         })),
                   ],
                 ).paddingOnly(top: DEFAULT_PADDING),

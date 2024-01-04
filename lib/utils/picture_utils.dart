@@ -31,7 +31,7 @@ LottieBuilder assetLottie(String path,
         double? height,
         LottieDelegates? delegates}) =>
     Lottie.asset(
-      fullPath ? path : 'assets/lottie/$path',
+      fullPath ? path : 'assets/lotties/$path',
       fit: fit ?? BoxFit.contain,
       width: width,
       height: height,
@@ -50,6 +50,40 @@ Image assetImages(String path,
       color: color,
       width: width,
       height: height,
+    );
+Image netImages(
+  String path, {
+  BoxFit? fit,
+  bool fullPath = false,
+  Color? color,
+  double? width,
+  double? height,
+  String? placeholder,
+}) =>
+    Image.network(
+      path,
+      height: height,
+      width: width,
+      fit: fit ?? BoxFit.cover,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        // if (wasSynchronouslyLoaded) return child;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(DEFAULT_RADIUS * 5),
+          child: AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(seconds: 1),
+            curve: Curves.easeOut,
+            child: child,
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => assetImages(
+        placeholder ?? MyPng.icNoPhoto,
+        fit: fit,
+        color: color,
+        width: width,
+        height: height,
+      ),
     );
 
 ImageProvider assetImageProvider(String path,

@@ -118,9 +118,7 @@ class ShadowedDialog extends StatelessWidget {
                       ),
                       onPressed: () async {
                         if (onConfirm != null) {
-                          await onConfirm!().then((value) => context.pop());
-                        } else {
-                          context.pop();
+                          await onConfirm!();
                         }
                       },
                       child: Text(confirmText ?? 'Logout'),

@@ -1,4 +1,4 @@
-import 'package:coinxfiat/constants/asset_constants.dart';
+import 'package:coinxfiat/constants/constants_index.dart';
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
     afterBuildCreated(() =>
         1.seconds.delay.then((value) => context.goNamed(Routes.dashboard)));
   }

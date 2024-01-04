@@ -7,3 +7,4 @@ export 'picture_utils.dart';
 export 'date_utils.dart';
 export 'share.dart';
 export 'dot_painter.dart';
+export 'extensions.dart';

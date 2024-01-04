@@ -1,5 +1,4 @@
 import 'package:coinxfiat/component/custom_app_bar.dart';
-import 'package:coinxfiat/main.dart';
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../constants/constants_index.dart';
+import '../store/store_index.dart';
 
 class BottomSheetFilter extends StatefulWidget {
   const BottomSheetFilter({
@@ -379,11 +379,10 @@ class _QueryFilterState extends State<_QueryFilter> {
           child: TextFormField(
             controller: controller,
             onChanged: (val) => widget.onApply(val),
-            style: TextStyle(
-                fontSize: 14,
-                color: appStore.isDarkMode
-                    ? Colors.white70
-                    : Colors.grey.shade500),
+            style: const TextStyle(
+              fontSize: 14,
+              // color: appStore.isDarkMode ? Colors.white : Colors.black
+            ),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.all(DEFAULT_PADDING / 2),
               isDense: true,

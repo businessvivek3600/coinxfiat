@@ -1,5 +1,6 @@
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:coinxfiat/widgets/widget_index.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -8,24 +9,52 @@ import 'package:nb_utils/nb_utils.dart';
 
 import '../../../component/component_index.dart';
 import '../../../constants/constants_index.dart';
+import '../../../model/model_index.dart';
 import '../../../routes/route_index.dart';
+import '../../../services/service_index.dart';
+import '../../screen_index.dart';
 
-class BuyOrSell extends StatefulWidget {
-  const BuyOrSell({super.key, required this.selling, this.requestId});
+class BuyOrSellRequestPage extends StatefulWidget {
+  const BuyOrSellRequestPage(
+      {super.key, required this.selling, this.requestId});
   final bool selling;
   final String? requestId;
 
   @override
-  State<BuyOrSell> createState() => _BuyOrSellState();
+  State<BuyOrSellRequestPage> createState() => _BuyOrSellRequestPageState();
 }
 
-class _BuyOrSellState extends State<BuyOrSell>
+class _BuyOrSellRequestPageState extends State<BuyOrSellRequestPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  ValueNotifier<bool> feedbackable = ValueNotifier<bool>(true);
+  ValueNotifier<BuySellTrade> buySellTrade =
+      ValueNotifier<BuySellTrade>(BuySellTrade());
+  ValueNotifier<bool> loading = ValueNotifier<bool>(true);
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _getBuySellTrade();
+  }
+
+  Future<void> _getBuySellTrade() async {
+    if (widget.requestId == null) {
+      toast('Trade not found', bgColor: Colors.red, gravity: ToastGravity.TOP);
+      return;
+    }
+
+    loading.value = true;
+    final res = await Apis.getBuySellTradeRequestApi(
+        widget.selling ? 'sell' : 'buy', widget.requestId!);
+    if (res.$1) {
+      buySellTrade.value = tryCatch<BuySellTrade>(
+              () => BuySellTrade.fromJson(res.$2['advertisment'])) ??
+          BuySellTrade();
+      feedbackable.value =
+          tryCatch<bool>(() => res.$2['feedbackable'] == 'true') ?? false;
+    }
+    loading.value = false;
   }
 
   _handleSheetMinimized(bool val) {
@@ -37,70 +66,152 @@ class _BuyOrSellState extends State<BuyOrSell>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // backgroundColor: Colors.black,
-      appBar: AppBar(
-          elevation: 0,
-          title: Text('${!widget.selling ? 'Buy' : 'Sell'} USDT-TRC20'),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(50),
-            child: Container(
-              color: context.primaryColor,
-              child: _Tabbar(tabController: _tabController),
+    return ValueListenableBuilder<bool>(
+        valueListenable: loading,
+        builder: (context, loading, _) {
+          return ValueListenableBuilder<BuySellTrade>(
+              valueListenable: buySellTrade,
+              builder: (context, buySellTrade, _) {
+                return Scaffold(
+                  // backgroundColor: Colors.black,
+                  appBar: AppBar(
+                      elevation: 0,
+                      title: Text(
+                          '${!widget.selling ? 'Buy' : 'Sell'} ${loading ? '' : buySellTrade.cryptoCurrency?.name.validate() ?? ''}'),
+                      bottom: PreferredSize(
+                          preferredSize: const Size.fromHeight(50),
+                          child: Container(
+                              color: context.primaryColor,
+                              child: _Tabbar(
+                                tabController: _tabController,
+                                loading: loading,
+                                buySellTrade: buySellTrade,
+                              )))),
+                  body: ListView(
+                    clipBehavior: Clip.hardEdge,
+                    // shrinkWrap: true,
+                    children: [
+                      _TabView(
+                        tabController: _tabController,
+                        loading: loading,
+                        buySellTrade: buySellTrade,
+                      ),
+                      10.height,
+                      _details(context,
+                          loading: loading, buySellTrade: buySellTrade),
+                      20.height,
+                      // 10.height,
+                      _feedbacks(context,
+                          loading: loading,
+                          feedbackable: feedbackable,
+                          feedbacks: buySellTrade.feedbacks),
+                    ],
+                  ),
+                  bottomSheet: _BuySellField(
+                      selling: widget.selling,
+                      onSheetChange: _handleSheetMinimized),
+                );
+              });
+        });
+  }
+
+  Widget _feedbacks(
+    BuildContext context, {
+    required bool loading,
+    required ValueNotifier<bool> feedbackable,
+    required List<AdFeedback> feedbacks,
+  }) {
+    return ValueListenableBuilder<bool>(
+        valueListenable: feedbackable,
+        builder: (context, feedbackable, _) {
+          return Container(
+            padding: const EdgeInsets.all(DEFAULT_PADDING),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
             ),
-          )),
-      body: ListView(
-        clipBehavior: Clip.hardEdge,
-        // shrinkWrap: true,
-        children: [
-          _TabView(tabController: _tabController),
-          10.height,
-          _details(context),
-          20.height,
-          // 10.height,
-          _feedbacks(context),
-        ],
-      ),
-      bottomSheet: _BuySellField(
-          selling: widget.selling, onSheetChange: _handleSheetMinimized),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Feedbacks on This Advertisement', style: boldTextStyle()),
+                10.height,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: 700.milliseconds,
+                      switchInCurve: Curves.easeIn,
+                      layoutBuilder: (currentChild, previousChildren) =>
+                          ScaleTransition(
+                        scale: currentChild != null
+                            ? const AlwaysStoppedAnimation(1)
+                            : const AlwaysStoppedAnimation(0.9),
+                        child: currentChild,
+                      ),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: FadeTransition(
+                          opacity: animation,
+                          // sizeFactor: animation,
+                          // position: Tween<Offset>(
+                          //         begin: const Offset(1, 0), end: Offset.zero)
+                          //     .animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: [
+                        _empty(context),
+                        _list(feedbacks, loading),
+                      ][feedbacks.isEmpty && !loading ? 0 : 1],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        });
+  }
+
+  AnimatedListView _list(List<AdFeedback> feedbacks, bool loading) {
+    return AnimatedListView(
+      padding: const EdgeInsets.only(bottom: 60),
+      itemCount: feedbacks.length,
+      shrinkWrap: true,
+      listAnimationType: ListAnimationType.FadeIn,
+      itemBuilder: (context, index) {
+        AdFeedback trade = feedbacks[index];
+        bool last = index == feedbacks.length - 1;
+        bool liked = trade.position.validate().toLowerCase().contains('like');
+        return UserFeedBackCard(
+          loading: loading,
+          liked: liked,
+          last: last,
+          trade: trade,
+        );
+      },
     );
   }
 
-  Container _feedbacks(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(DEFAULT_PADDING),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Feedbacks on This Advertisement', style: boldTextStyle()),
-          10.height,
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FaIcon(FontAwesomeIcons.solidCommentDots,
-                      color: Colors.grey, size: 15),
-                ],
-              ),
-              5.height,
-              Text('No feedback yet',
-                  style: secondaryTextStyle(
-                      color:
-                          isDarkMode(context) ? Colors.white : Colors.black)),
-            ],
-          ),
-        ],
-      ),
+  Column _empty(BuildContext context) {
+    return Column(
+      children: [
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FaIcon(FontAwesomeIcons.solidCommentDots,
+                color: Colors.grey, size: 15),
+          ],
+        ),
+        5.height,
+        Text('No feedback yet',
+            style: secondaryTextStyle(
+                color: isDarkMode(context) ? Colors.white : Colors.black)),
+      ],
     );
   }
 
-  Container _details(BuildContext context) {
+  Container _details(BuildContext context,
+      {required bool loading, required BuySellTrade buySellTrade}) {
     return Container(
       padding: const EdgeInsets.all(DEFAULT_PADDING),
       decoration: BoxDecoration(
@@ -113,15 +224,26 @@ class _BuyOrSellState extends State<BuyOrSell>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Rate:', style: boldTextStyle()),
-              Text('92 INR/USDT(TRC20)', style: boldTextStyle()),
+              Text(
+                  '${loading ? '' : '${(buySellTrade.rate).convertDouble(8)} ${buySellTrade.fiatCurrency?.code ?? ''} / ${buySellTrade.cryptoCurrency?.code ?? ''}'} ',
+                  style: boldTextStyle()),
             ],
           ),
           10.height,
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Payment Method:', style: boldTextStyle()),
-              Text('Bank Transfer', style: boldTextStyle()),
+              Text('Payment Method: ', style: boldTextStyle()),
+              Expanded(
+                child: Text(
+                    buySellTrade.gateways
+                        .map((e) => e.name)
+                        .toList()
+                        .join(' | ')
+                        .validate(),
+                    textAlign: TextAlign.end,
+                    style: boldTextStyle(color: inProgressColor)),
+              ),
             ],
           ),
           10.height,
@@ -129,7 +251,10 @@ class _BuyOrSellState extends State<BuyOrSell>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Trade Limits:', style: boldTextStyle()),
-              Text('100 - 1000 INR',
+              Text(
+                  loading
+                      ? ''
+                      : '${buySellTrade.minimumLimit.convertDouble(8)} - ${buySellTrade.maximumLimit.convertDouble(0)} ${buySellTrade.fiatCurrency?.code ?? ''}',
                   style: boldTextStyle(color: context.primaryColor)),
             ],
           ),
@@ -138,7 +263,8 @@ class _BuyOrSellState extends State<BuyOrSell>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Payment Window:', style: boldTextStyle()),
-              Text('30 minutes', style: boldTextStyle()),
+              Text(buySellTrade.paymentWindow?.name ?? '',
+                  style: boldTextStyle()),
             ],
           ),
         ],
@@ -368,10 +494,15 @@ class _BuySellField extends StatelessWidget {
 }
 
 class _Tabbar extends StatelessWidget {
-  const _Tabbar({required TabController tabController})
-      : _tabController = tabController;
+  const _Tabbar({
+    required TabController tabController,
+    required this.loading,
+    required this.buySellTrade,
+  }) : _tabController = tabController;
 
   final TabController _tabController;
+  final bool loading;
+  final BuySellTrade buySellTrade;
 
   @override
   Widget build(BuildContext context) {
@@ -393,7 +524,10 @@ class _Tabbar extends StatelessWidget {
               CircleAvatar(
                 backgroundColor: Colors.white,
                 radius: 10,
-                child: assetImages(MyPng.logoLBlack),
+                child: netImages(
+                  buySellTrade.user?.imgPath ?? '',
+                  placeholder: MyPng.dummyUser,
+                ),
               ),
             ],
           ),
@@ -406,9 +540,14 @@ class _Tabbar extends StatelessWidget {
 }
 
 class _TabView extends StatefulWidget {
-  const _TabView({required TabController tabController})
-      : _tabController = tabController;
+  const _TabView({
+    required TabController tabController,
+    required this.loading,
+    required this.buySellTrade,
+  }) : _tabController = tabController;
   final TabController _tabController;
+  final bool loading;
+  final BuySellTrade buySellTrade;
   @override
   State<_TabView> createState() => _TabViewState();
 }
@@ -457,7 +596,8 @@ class _TabViewState extends State<_TabView> {
             ),
           ),
           child: [
-            const _SellerInfo(),
+            _SellerInfo(
+                buySellTrade: widget.buySellTrade, loading: widget.loading),
             Container(
                 key: const ValueKey(1),
                 constraints: const BoxConstraints(maxHeight: 300),
@@ -465,8 +605,8 @@ class _TabViewState extends State<_TabView> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.all(DEFAULT_PADDING),
                   children: [
-                    htmlView(context,
-                        r'''<p style="text-align: center;">ALL Payment Accepted</p>''')
+                    htmlView(
+                        context, widget.buySellTrade.termsOfTrade.validate())
                   ],
                 )),
             Container(
@@ -475,7 +615,10 @@ class _TabViewState extends State<_TabView> {
                 child: ListView(
                   shrinkWrap: true,
                   padding: const EdgeInsets.all(DEFAULT_PADDING),
-                  children: [htmlView(context, privatePolicyHTML)],
+                  children: [
+                    htmlView(
+                        context, widget.buySellTrade.paymentDetails.validate())
+                  ],
                 )),
           ][_selectedIndex],
         ),
@@ -495,7 +638,10 @@ class _TabViewState extends State<_TabView> {
 }
 
 class _SellerInfo extends StatelessWidget {
-  const _SellerInfo({super.key});
+  const _SellerInfo(
+      {super.key, required this.buySellTrade, required this.loading});
+  final BuySellTrade buySellTrade;
+  final bool loading;
 
   ///verified icon check
   final FaIcon verifiedIcon =
@@ -506,6 +652,7 @@ class _SellerInfo extends StatelessWidget {
       const FaIcon(FontAwesomeIcons.circleXmark, color: Colors.red, size: 15);
   @override
   Widget build(BuildContext context) {
+    final Sender? user = buySellTrade.user;
     return Container(
       key: const ValueKey(0),
       padding: const EdgeInsets.all(DEFAULT_PADDING),
@@ -521,17 +668,19 @@ class _SellerInfo extends StatelessWidget {
               Container(
                 height: 50,
                 width: 50,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.white,
+                decoration:
+                    BoxDecoration(borderRadius: BorderRadius.circular(10)),
+                child: netImages(
+                  'MyPng.dummyUser',
+                  placeholder: MyPng.dummyUser,
+                  fit: BoxFit.cover,
                 ),
-                child: assetImages(MyPng.logoLBlack),
               ),
               10.width,
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Seller Name', style: boldTextStyle()),
+                  Text(user?.fullName ?? '', style: boldTextStyle()),
                   10.height,
                   Row(
                     children: [
@@ -541,7 +690,7 @@ class _SellerInfo extends StatelessWidget {
                           const FaIcon(FontAwesomeIcons.thumbsUp,
                               color: Colors.green, size: 15),
                           5.width,
-                          Text('0',
+                          Text(buySellTrade.likeCount.validate().toString(),
                               style: secondaryTextStyle(
                                   color: isDarkMode(context)
                                       ? Colors.white
@@ -555,7 +704,7 @@ class _SellerInfo extends StatelessWidget {
                           const FaIcon(FontAwesomeIcons.thumbsDown,
                               color: Colors.red, size: 15),
                           5.width,
-                          Text('0',
+                          Text(buySellTrade.dislikeCount.validate().toString(),
                               style: secondaryTextStyle(
                                   color: isDarkMode(context)
                                       ? Colors.white
@@ -575,13 +724,21 @@ class _SellerInfo extends StatelessWidget {
             return Column(
               // mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _verifiedInfo(context, 'Email Verified', true),
+                _verifiedInfo(
+                    context, 'Email Verified', user?.emailVerification == 1,
+                    loading: loading),
                 5.height,
-                _verifiedInfo(context, 'Mobile Number Verified', false),
+                _verifiedInfo(context, 'Mobile Number Verified',
+                    user?.smsVerification == 1,
+                    loading: loading),
                 5.height,
-                _verifiedInfo(context, 'Identity Verified', true),
+                _verifiedInfo(
+                    context, 'Identity Verified', user?.identityVerify == 0,
+                    loading: loading),
                 5.height,
-                _verifiedInfo(context, 'Address Verified', true),
+                _verifiedInfo(
+                    context, 'Address Verified', user?.addressVerify == 0,
+                    loading: loading),
               ],
             );
           }),
@@ -591,10 +748,15 @@ class _SellerInfo extends StatelessWidget {
     );
   }
 
-  Widget _verifiedInfo(BuildContext context, String text, bool isVerified) {
+  Widget _verifiedInfo(BuildContext context, String text, bool isVerified,
+      {required bool loading}) {
     return Row(
       children: [
-        isVerified ? verifiedIcon : notVerifiedIcon,
+        loading
+            ? const CupertinoActivityIndicator(radius: 5)
+            : isVerified
+                ? verifiedIcon
+                : notVerifiedIcon,
         10.width,
         Text(text),
       ],

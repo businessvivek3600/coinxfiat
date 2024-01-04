@@ -3,36 +3,120 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../constants/constants_index.dart';
+import '../../model/model_index.dart';
+import '../../services/service_index.dart';
 import '../../utils/utils_index.dart';
 
-class WalletDetails extends StatelessWidget {
-  const WalletDetails({super.key, this.title, this.subTitle});
-  final String? title;
-  final String? subTitle;
+class WalletDetails extends StatefulWidget {
+  const WalletDetails(
+      {super.key, this.code, this.name, this.address, this.bal});
+  final String? code;
+  final String? name;
+  final String? address;
+  final String? bal;
+
+  @override
+  State<WalletDetails> createState() => _WalletDetailsState();
+}
+
+class _WalletDetailsState extends State<WalletDetails> {
+  ValueNotifier<bool> loading = ValueNotifier<bool>(true);
+  ValueNotifier<bool> loadingMore = ValueNotifier<bool>(false);
+  String? name;
+  String? walletAddress;
+  double walletBalance = 0;
+  setWalletName(String? name) => setState(() => this.name = name);
+  setWalletAddress(String? address) => setState(() => walletAddress = address);
+  setWalletBalance(String? bal) =>
+      setState(() => walletBalance = double.tryParse(bal ?? '0').validate());
+  ValueNotifier<List<WalletTransaction>> trxList =
+      ValueNotifier<List<WalletTransaction>>([]);
+
+  @override
+  void initState() {
+    super.initState();
+    afterBuildCreated(() {
+      setWalletName(widget.name);
+      setWalletAddress(widget.address);
+      setWalletBalance(widget.bal);
+      getData(refresh: true);
+    });
+  }
+
+  Future<void> getData({int page = 1, bool refresh = false}) async {
+    if (refresh) {
+      loading.value = true;
+      loadingMore.value = false;
+    } else {
+      loading.value = true;
+      loadingMore.value = true;
+    }
+    await Apis.getWalletTransactionsApi(
+            type: widget.code == '-' ? '' : (widget.code ?? ''), page: page)
+        .then(
+      (value) {
+        p(value);
+        if (value.$2.entries.isNotEmpty) {
+          List<Wallet> walletList = tryCatch<List<Wallet>>(() {
+                return (value.$2['wallets'] ?? [])
+                    .map<Wallet>((e) => Wallet.fromJson(e))
+                    .toList();
+              }) ??
+              [];
+          p('walletList: ${walletList.length}');
+          if (walletList.isNotEmpty) {
+            setWalletName(walletList[0].crypto?.name);
+            setWalletBalance(walletList[0].balance.toString());
+            setWalletAddress(walletList[0].walletAddress);
+          }
+          List<WalletTransaction> trxList = tryCatch<List<WalletTransaction>>(
+                () => (value.$2['transactions']['data'] ?? [])
+                    .map<WalletTransaction>(
+                        (e) => WalletTransaction.fromJson(e))
+                    .toList(),
+              ) ??
+              [];
+          if (refresh) {
+            this.trxList.value = trxList;
+          } else {
+            this.trxList.value = [...this.trxList.value, ...trxList];
+          }
+          p('trxList: ${this.trxList.value.length}');
+        }
+      },
+    );
+    loading.value = false;
+    loadingMore.value = false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title ?? subTitle ?? 'Wallet Details'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: ListView(
-        children: [
-          ///wallet detail
-          _walletDetail(context),
+    // return Scaffold();
+    return ValueListenableBuilder<bool>(
+        valueListenable: loading,
+        builder: (_, loading, __) {
+          return Scaffold(
+            appBar: AppBar(
+                title: Text(widget.name ?? 'Wallet Details'),
+                centerTitle: true,
+                elevation: 0),
+            body: ListView(
+              children: [
+                ///wallet detail
+                _walletDetail(context, loading),
 
-          ///transaction
-          _transaction(context),
-        ],
-      ),
-    );
+                ///transaction
+                _transaction(context, loading),
+              ],
+            ),
+          );
+        });
   }
 
-  Widget _transaction(BuildContext context) {
+  Widget _transaction(BuildContext context, bool loading) {
     return Container(
       margin: const EdgeInsets.only(
           left: DEFAULT_PADDING, right: DEFAULT_PADDING, top: DEFAULT_PADDING),
@@ -40,27 +124,57 @@ class WalletDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ///transaction title
-          Text(
-            'Transaction',
-            style: boldTextStyle(),
-          ),
+          Text('Transactions', style: boldTextStyle()),
 
           ///transaction list
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 10,
-            itemBuilder: (context, index) {
-              return _transactionItem(
-                context,
-                trxId: '0x8f2d...d3f2',
-                title: index.isEven ? 'Send' : 'Receive',
-                amount: '${09.078738 * (index + 1)}',
-                remark: 'Adding to wallet',
-                time: DateTime.now().subtract(Duration(days: index)).timeAgo,
-              );
-            },
-          ),
+          loading
+              ? ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 8,
+                  itemBuilder: (context, index) {
+                    return _transactionItem(
+                      context,
+                      trxId: 'trxId',
+                      title: '--------',
+                      amount: '0000000000.0 ETH',
+                      remark: '------------------',
+                      time: '---------',
+                      loading: loading,
+                    );
+                  },
+                )
+              : ValueListenableBuilder<List<WalletTransaction>>(
+                  valueListenable: trxList,
+                  builder: (_, trxList, __) {
+                    if (trxList.isEmpty) {
+                      return SizedBox(
+                          height: context.height() * 0.5,
+                          child: const Text('No transaction found').center());
+                    } else {
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: trxList.length,
+                        itemBuilder: (context, index) {
+                          WalletTransaction trx = trxList[index];
+                          bool isSend = trx.trxType?.toLowerCase() != '+';
+
+                          return _transactionItem(
+                            context,
+                            trxId:
+                                Wallet().formatWalletAddress(trx.trxId ?? ''),
+                            title: isSend ? 'Send' : 'Received',
+                            amount:
+                                '${trx.amount.convertDouble(8)} ${trx.code ?? ''}',
+                            remark: trx.remarks,
+                            time: MyDateUtils.formatDateAsToday(trx.createdAt),
+                            loading: loading,
+                          );
+                        },
+                      );
+                    }
+                  }),
         ],
       ),
     );
@@ -73,67 +187,76 @@ class WalletDetails extends StatelessWidget {
     required String amount,
     String? remark,
     String? time,
+    bool loading = false,
   }) {
     bool isSend = title.toLowerCase() == 'send';
-    return Container(
-      margin: const EdgeInsets.only(top: DEFAULT_PADDING),
-      child: Row(
-        children: [
-          ///icon
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+    return Skeletonizer(
+      enabled: loading,
+      textBoneBorderRadius: TextBoneBorderRadius(BorderRadius.circular(3)),
+      child: Container(
+        margin: const EdgeInsets.only(top: DEFAULT_PADDING),
+        child: Row(
+          children: [
+            ///icon
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: loading
+                  ? const SizedBox(width: 24, height: 24)
+                  : Transform.rotate(
+                      angle: 3.14 / 4,
+                      child: Icon(
+                        isSend
+                            ? FontAwesomeIcons.arrowUp
+                            : FontAwesomeIcons.arrowDown,
+                        size: 24,
+                        color: isSend ? runningColor : completedColor,
+                      ),
+                    ),
             ),
-            child: Transform.rotate(
-              angle: 3.14 / 4,
-              child: Icon(
-                isSend ? FontAwesomeIcons.arrowUp : FontAwesomeIcons.arrowDown,
-                size: 24,
-                color: isSend ? runningColor : completedColor,
+            width10(),
+
+            ///detail
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ///title
+                  Text(
+                    title,
+                    style: boldTextStyle(),
+                  ),
+
+                  ///amount
+                  Text(
+                    amount,
+                    style: boldTextStyle(size: 16),
+                  ),
+
+                  ///remark
+                  Text(
+                    remark ?? 'Remark',
+                    style: secondaryTextStyle(),
+                  ),
+                ],
               ),
             ),
-          ),
-          width10(),
 
-          ///detail
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ///title
-                Text(
-                  title,
-                  style: boldTextStyle(),
-                ),
-
-                ///amount
-                Text(
-                  amount,
-                  style: boldTextStyle(size: 16),
-                ),
-
-                ///remark
-                Text(
-                  remark ?? 'Remark',
-                  style: secondaryTextStyle(),
-                ),
-              ],
+            ///time
+            Text(
+              time ?? 'Time',
+              style: secondaryTextStyle(),
             ),
-          ),
-
-          ///time
-          Text(
-            time ?? 'Time',
-            style: secondaryTextStyle(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _walletDetail(BuildContext context) {
+  Widget _walletDetail(BuildContext context, bool loading) {
     return Container(
       margin: const EdgeInsets.only(
           left: DEFAULT_PADDING, right: DEFAULT_PADDING, top: DEFAULT_PADDING),
@@ -141,19 +264,25 @@ class WalletDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ///wallet name
-          Text(subTitle ?? 'Sub Title', style: boldTextStyle()),
+          Text(widget.name ?? (loading ? 'Loading...' : 'Wallet'),
+              style: boldTextStyle()),
 
           ///wallet amount
-          Text('0.0000978738', style: boldTextStyle(size: 24)),
+          Text(walletBalance.toString(), style: boldTextStyle(size: 24)),
 
           ///wallet address
           Row(
             children: [
-              Text('0x8f2d...d3f2', style: secondaryTextStyle()),
+              Text(Wallet().formatWalletAddress(walletAddress),
+                  style: secondaryTextStyle()),
 
               ///copy
               IconButton(
-                  onPressed: () {},
+                  onPressed: walletAddress != null
+                      ? () => Clipboard.setData(
+                              ClipboardData(text: walletAddress.validate()))
+                          .then((value) => toast('Wallet address copied'))
+                      : null,
                   icon: const Icon(FontAwesomeIcons.copy, size: 16)),
             ],
           ),
@@ -179,8 +308,11 @@ class WalletDetails extends StatelessWidget {
                 context,
                 icon: FontAwesomeIcons.qrcode,
                 title: 'Deposit',
-                onTap: () =>
-                    _showDepositDialog(context, title: title, symbol: subTitle),
+                onTap: () => _showDepositDialog(
+                  context,
+                  title: widget.code,
+                  symbol: widget.name,
+                ),
               ),
 
               ///buy
@@ -188,7 +320,7 @@ class WalletDetails extends StatelessWidget {
                 context,
                 icon: FontAwesomeIcons.cartShopping,
                 title: 'Withdraw',
-                onTap: () => _showWithdrawDialog(context, title: title),
+                onTap: () => _showWithdrawDialog(context, title: widget.code),
               ),
             ],
           ),
@@ -229,7 +361,10 @@ class WalletDetails extends StatelessWidget {
       {String? title, String? symbol}) {
     showDialog(
       context: context,
-      builder: (context) => _WalletDepositDialog(title: title, symbol: symbol),
+      builder: (context) => _WalletDepositDialog(
+          walletAddress: walletAddress.validate(),
+          title: title,
+          symbol: symbol),
     );
   }
 }
@@ -350,7 +485,9 @@ class _WalletDepositDialog extends StatelessWidget {
     super.key,
     this.title,
     this.symbol,
+    required this.walletAddress,
   });
+  final String walletAddress;
   final String? title;
   final String? symbol;
 
@@ -407,18 +544,24 @@ class _WalletDepositDialog extends StatelessWidget {
         height10(),
 
         ///wallet address
-        Text('0x8f2d...d3f2', style: boldTextStyle()),
-
-        height10(),
-
-        ///copy
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(
-                onPressed: () {},
-                icon: const Icon(FontAwesomeIcons.copy, size: 16)),
-            Text('Copy', style: secondaryTextStyle()),
+            Text(Wallet().formatWalletAddress(walletAddress),
+                style: boldTextStyle()),
+            width10(),
+
+            ///copy
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(FontAwesomeIcons.copy, size: 16),
+              width5(),
+              Text('Copy', style: secondaryTextStyle())
+            ]).paddingAll(DEFAULT_RADIUS).onTap(
+                  () => Clipboard.setData(
+                          ClipboardData(text: walletAddress.validate()))
+                      .then((value) => toast('Wallet address copied')),
+                  borderRadius: BorderRadius.circular(10),
+                ),
           ],
         ),
 

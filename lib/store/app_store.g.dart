@@ -321,6 +321,22 @@ mixin _$AppStore on _AppStore, Store {
     });
   }
 
+  late final _$fullnameAtom =
+      Atom(name: '_AppStore.fullname', context: context);
+
+  @override
+  String get fullname {
+    _$fullnameAtom.reportRead();
+    return super.fullname;
+  }
+
+  @override
+  set fullname(String value) {
+    _$fullnameAtom.reportWrite(value, super.fullname, () {
+      super.fullname = value;
+    });
+  }
+
   late final _$latitudeAtom =
       Atom(name: '_AppStore.latitude', context: context);
 
@@ -444,6 +460,22 @@ mixin _$AppStore on _AppStore, Store {
   set currencyCode(String value) {
     _$currencyCodeAtom.reportWrite(value, super.currencyCode, () {
       super.currencyCode = value;
+    });
+  }
+
+  late final _$phoneCodeAtom =
+      Atom(name: '_AppStore.phoneCode', context: context);
+
+  @override
+  String get phoneCode {
+    _$phoneCodeAtom.reportRead();
+    return super.phoneCode;
+  }
+
+  @override
+  set phoneCode(String value) {
+    _$phoneCodeAtom.reportWrite(value, super.phoneCode, () {
+      super.phoneCode = value;
     });
   }
 
@@ -766,6 +798,15 @@ mixin _$AppStore on _AppStore, Store {
         .run(() => super.setCurrencyCode(val, isInitializing: isInitializing));
   }
 
+  late final _$setPhoneCodeAsyncAction =
+      AsyncAction('_AppStore.setPhoneCode', context: context);
+
+  @override
+  Future<void> setPhoneCode(String val, {bool isInitializing = false}) {
+    return _$setPhoneCodeAsyncAction
+        .run(() => super.setPhoneCode(val, isInitializing: isInitializing));
+  }
+
   late final _$setCurrencyCountryIdAsyncAction =
       AsyncAction('_AppStore.setCurrencyCountryId', context: context);
 
@@ -845,6 +886,15 @@ mixin _$AppStore on _AppStore, Store {
   Future<void> setUserName(String val, {bool isInitializing = false}) {
     return _$setUserNameAsyncAction
         .run(() => super.setUserName(val, isInitializing: isInitializing));
+  }
+
+  late final _$setFullNameAsyncAction =
+      AsyncAction('_AppStore.setFullName', context: context);
+
+  @override
+  Future<void> setFullName(String val, {bool isInitializing = false}) {
+    return _$setFullNameAsyncAction
+        .run(() => super.setFullName(val, isInitializing: isInitializing));
   }
 
   late final _$setCurrentAddressAsyncAction =
@@ -977,6 +1027,7 @@ uid: ${uid},
 userContactNumber: ${userContactNumber},
 userEmail: ${userEmail},
 userName: ${userName},
+fullname: ${fullname},
 latitude: ${latitude},
 longitude: ${longitude},
 currentAddress: ${currentAddress},
@@ -985,6 +1036,7 @@ countryId: ${countryId},
 stateId: ${stateId},
 currencySymbol: ${currencySymbol},
 currencyCode: ${currencyCode},
+phoneCode: ${phoneCode},
 currencyCountryId: ${currencyCountryId},
 cityId: ${cityId},
 address: ${address},

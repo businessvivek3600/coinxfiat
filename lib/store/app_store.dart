@@ -1,4 +1,3 @@
-import 'package:coinxfiat/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobx/mobx.dart';
@@ -7,6 +6,8 @@ import 'package:nb_utils/nb_utils.dart';
 import '../constants/constants_index.dart';
 
 part 'app_store.g.dart';
+
+final appStore = AppStore();
 
 class AppStore = _AppStore with _$AppStore;
 
@@ -69,6 +70,9 @@ abstract class _AppStore with Store {
   String userName = '';
 
   @observable
+  String fullname = '';
+
+  @observable
   double latitude = 0.0;
 
   @observable
@@ -91,6 +95,9 @@ abstract class _AppStore with Store {
 
   @observable
   String currencyCode = '';
+
+  @observable
+  String phoneCode = '';
 
   @observable
   String currencyCountryId = '';
@@ -133,7 +140,7 @@ abstract class _AppStore with Store {
   @action
   Future<void> set24HourFormat(bool val, {bool isInitializing = false}) async {
     is24HourFormat = val;
-    // if (!isInitializing) await setValue(HOUR_FORMAT_STATUS, val);
+    if (!isInitializing) await setValue(HOUR_FORMAT_STATUS, val);
   }
 
   @action
@@ -159,19 +166,19 @@ abstract class _AppStore with Store {
   @action
   Future<void> setUserType(String val, {bool isInitializing = false}) async {
     userType = val;
-    // if (!isInitializing) await setValue(USER_TYPE, val);
+    if (!isInitializing) await setValue(USER_TYPE, val);
   }
 
   @action
   Future<void> setAddress(String val, {bool isInitializing = false}) async {
     address = val;
-    // if (!isInitializing) await setValue(ADDRESS, val);
+    if (!isInitializing) await setValue(ADDRESS, val);
   }
 
   @action
   Future<void> setUserProfile(String val, {bool isInitializing = false}) async {
     userProfileImage = val;
-    // if (!isInitializing) await setValue(PROFILE_IMAGE, val);
+    if (!isInitializing) await setValue(PROFILE_IMAGE, val);
   }
 
   @action
@@ -186,7 +193,7 @@ abstract class _AppStore with Store {
   @action
   Future<void> setLoginType(String val, {bool isInitializing = false}) async {
     loginType = val;
-    // if (!isInitializing) await setValue(LOGIN_TYPE, val);
+    if (!isInitializing) await setValue(LOGIN_TYPE, val);
   }
 
   @action
@@ -219,7 +226,7 @@ abstract class _AppStore with Store {
   @action
   Future<void> setToken(String val, {bool isInitializing = false}) async {
     token = val;
-    // if (!isInitializing) await compareValuesInSharedPreference(TOKEN, val);
+    if (!isInitializing) await setValue(TOKEN, val);
   }
 
   @action
@@ -231,21 +238,27 @@ abstract class _AppStore with Store {
   @action
   Future<void> setStateId(int val, {bool isInitializing = false}) async {
     stateId = val;
-    // if (!isInitializing) await setValue(STATE_ID, val);
+    if (!isInitializing) await setValue(STATE_ID, val);
   }
 
   @action
   Future<void> setCurrencySymbol(String val,
       {bool isInitializing = false}) async {
     currencySymbol = val;
-    // if (!isInitializing) await setValue(CURRENCY_COUNTRY_SYMBOL, val);
+    if (!isInitializing) await setValue(CURRENCY_COUNTRY_SYMBOL, val);
   }
 
   @action
   Future<void> setCurrencyCode(String val,
       {bool isInitializing = false}) async {
     currencyCode = val;
-    // if (!isInitializing) await setValue(CURRENCY_COUNTRY_CODE, val);
+    if (!isInitializing) await setValue(CURRENCY_COUNTRY_CODE, val);
+  }
+
+  @action
+  Future<void> setPhoneCode(String val, {bool isInitializing = false}) async {
+    phoneCode = val;
+    if (!isInitializing) await setValue(PHONE_CODE, val);
   }
 
   @action
@@ -260,69 +273,75 @@ abstract class _AppStore with Store {
   @action
   Future<void> setUId(String val, {bool isInitializing = false}) async {
     uid = val;
-    // // if (!isInitializing) await setValue(UID, val);
+    if (!isInitializing) await setValue(UID, val);
   }
 
   @action
   Future<void> setCityId(int val, {bool isInitializing = false}) async {
     cityId = val;
-    // if (!isInitializing) await setValue(CITY_ID, val);
+    if (!isInitializing) await setValue(CITY_ID, val);
   }
 
   @action
   Future<void> setUserId(int val, {bool isInitializing = false}) async {
     userId = val;
-    // if (!isInitializing) await setValue(USER_ID, val);
+    if (!isInitializing) await setValue(USER_ID, val);
   }
 
   @action
   Future<void> setUserEmail(String val, {bool isInitializing = false}) async {
     userEmail = val;
-    // if (!isInitializing) await setValue(USER_EMAIL, val);
+    if (!isInitializing) await setValue(USER_EMAIL, val);
   }
 
   @action
   Future<void> setFirstName(String val, {bool isInitializing = false}) async {
     userFirstName = val;
-    // if (!isInitializing) await setValue(FIRST_NAME, val);
+    if (!isInitializing) await setValue(FIRST_NAME, val);
   }
 
   @action
   Future<void> setLastName(String val, {bool isInitializing = false}) async {
     userLastName = val;
-    // if (!isInitializing) await setValue(LAST_NAME, val);
+    if (!isInitializing) await setValue(LAST_NAME, val);
   }
 
   @action
   Future<void> setContactNumber(String val,
       {bool isInitializing = false}) async {
     userContactNumber = val;
-    // if (!isInitializing) await setValue(CONTACT_NUMBER, val);
+    if (!isInitializing) await setValue(CONTACT_NUMBER, val);
   }
 
   @action
   Future<void> setUserName(String val, {bool isInitializing = false}) async {
     userName = val;
-    // if (!isInitializing) await setValue(USERNAME, val);
+    if (!isInitializing) await setValue(USERNAME, val);
+  }
+
+  @action
+  Future<void> setFullName(String val, {bool isInitializing = false}) async {
+    fullname = val;
+    if (!isInitializing) await setValue(USERNAME, val);
   }
 
   @action
   Future<void> setCurrentAddress(String val,
       {bool isInitializing = false}) async {
     currentAddress = val;
-    // if (!isInitializing) await setValue(CURRENT_ADDRESS, val);
+    if (!isInitializing) await setValue(CURRENT_ADDRESS, val);
   }
 
   @action
   Future<void> setLatitude(double val, {bool isInitializing = false}) async {
     latitude = val;
-    // await setValue(LATITUDE, val);
+    await setValue(LATITUDE, val);
   }
 
   @action
   Future<void> setLongitude(double val, {bool isInitializing = false}) async {
     longitude = val;
-    // await setValue(LONGITUDE, val);
+    await setValue(LONGITUDE, val);
   }
 
   @action

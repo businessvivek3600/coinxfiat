@@ -14,8 +14,13 @@ class Paths {
 
   ///sub-path
   ///Wallet
-  static const String walletDetails =
-      '${Paths.dashboard}/${Routes.walletDetails}';
+  static String walletDetails(String? code,
+      {String? title, String? address, String? bal}) {
+    var path =
+        '${Paths.dashboard}/${Routes.walletDetails}/${code ?? ''}${title != null || address != null || bal != null ? '?' : ''}${title != null ? 'name=$title' : ''}${address != null ? '&address=$address' : ''}${bal != null ? '&bal=$bal' : ''}';
+    return path;
+  }
+
   static String buySell(String type, String? requestId) =>
       '${Paths.dashboard}/$type/trade/request${requestId != null ? '/$requestId' : ''}';
   static String sellAddGateway(String? requestId) =>

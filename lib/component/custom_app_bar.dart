@@ -37,7 +37,8 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool? excludeHeaderSemantics;
 
   GradientAppBar(
-      {required this.title,
+      {super.key,
+      required this.title,
       this.actions,
       this.centerTitle,
       this.elevation = 0.0,

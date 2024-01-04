@@ -9,11 +9,10 @@ import 'locale/languages.dart';
 import 'model/model_index.dart';
 import 'routes/route_index.dart';
 import 'services/service_index.dart';
-import 'store/app_store.dart';
+import 'store/store_index.dart';
 import 'utils/utils_index.dart';
+import 'widgets/widget_index.dart';
 
-//region Mobx Stores
-AppStore appStore = AppStore();
 //region Global Variables
 BaseLanguage language = LanguageEn();
 void main() async {
@@ -28,6 +27,7 @@ void main() async {
         error: details, stackTrace: details.stack);
     saveErrorLog(details);
   };
+
   runApp(const MyApp());
 }
 
@@ -67,9 +67,13 @@ Future<void> initializeUserData() async {
   //check for material you theme
   await appStore.setUseMaterialYouTheme(getBoolAsync(USE_MATERIAL_YOU_THEME),
       isInitializing: true);
+  // await setValue(TOKEN, 'EgANjoDNEyOHu9pqadiAyGzaXCqeP5V5a3YKIgVr');
+  var token = getStringAsync(TOKEN);
+  dioClient = DioClient(AppConst.baseUrl, null,
+      loggingInterceptor: LoggingInterceptor());
 
   ///initialize user data
-  if (appStore.isLoggedIn) {
+  if (appStore.isLoggedIn && token.isNotEmpty) {
     await appStore.setUserId(getIntAsync(USER_ID), isInitializing: true);
     await appStore.setFirstName(getStringAsync(FIRST_NAME),
         isInitializing: true);
@@ -85,7 +89,6 @@ Future<void> initializeUserData() async {
     await appStore.setStateId(getIntAsync(STATE_ID), isInitializing: true);
     await appStore.setCityId(getIntAsync(COUNTRY_ID), isInitializing: true);
     await appStore.setUId(getStringAsync(UID), isInitializing: true);
-    await appStore.setToken(getStringAsync(TOKEN), isInitializing: true);
     await appStore.setAddress(getStringAsync(ADDRESS), isInitializing: true);
     await appStore.setCurrencyCode(getStringAsync(CURRENCY_COUNTRY_CODE),
         isInitializing: true);
@@ -106,6 +109,9 @@ Future<void> initializeUserData() async {
         isInitializing: true);
     await appStore.setEnableUserWallet(getBoolAsync(ENABLE_USER_WALLET),
         isInitializing: true);
+    await appStore.setToken(getStringAsync(TOKEN), isInitializing: true);
+    dioClient.updateHeader(getStringAsync(TOKEN));
+    AuthService().getUserByToken();
   }
 }
 
@@ -120,28 +126,28 @@ class MyApp extends StatelessWidget {
         builder: (_) => FutureBuilder<Color>(
           future: getMaterialYouData(),
           builder: (_, snap) {
-            print('snap.data: ${snap.data} ${appStore.isDarkMode}');
             return Observer(
               builder: (_) => MaterialApp.router(
-                debugShowCheckedModeBanner: false,
-                routerConfig: goRouter,
-                // navigatorKey: navigatorKey,
-                // home: const SplashScreen(),
-                theme: AppTheme.dynamicTheme(lightThemeSetColor),
-                darkTheme: AppTheme.dynamicTheme(darkThemeSetColor),
-                themeMode:
-                    appStore.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-                title: AppConst.appName,
-                // supportedLocales: LanguageDataModel.languageLocales(),
-                // localizationsDelegates: const [
-                //   AppLocalizations(),
-                //   GlobalMaterialLocalizations.delegate,
-                //   GlobalWidgetsLocalizations.delegate,
-                //   GlobalCupertinoLocalizations.delegate,
-                // ],
-                // localeResolutionCallback: (locale, supportedLocales) => locale,
-                // locale: Locale(appStore.selectedLanguageCode),
-              ),
+                  debugShowCheckedModeBanner: false,
+                  routerConfig: goRouter,
+                  // navigatorKey: navigatorKey,
+                  // home: const SplashScreen(),
+                  theme: AppTheme.dynamicTheme(lightThemeSetColor),
+                  darkTheme: AppTheme.dynamicTheme(darkThemeSetColor),
+                  themeMode:
+                      appStore.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+                  title: AppConst.appName,
+                  // supportedLocales: LanguageDataModel.languageLocales(),
+                  // localizationsDelegates: const [
+                  //   AppLocalizations(),
+                  //   GlobalMaterialLocalizations.delegate,
+                  //   GlobalWidgetsLocalizations.delegate,
+                  //   GlobalCupertinoLocalizations.delegate,
+                  // ],
+                  // localeResolutionCallback: (locale, supportedLocales) => locale,
+                  // locale: Locale(appStore.selectedLanguageCode),
+                  builder: (context, child) =>
+                      LoadingWidget(context: context, child: child!)),
             );
           },
         ),

@@ -13,9 +13,9 @@ class _MyHoldingsPageState extends State<MyHoldingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Holdings'),
+        title: const Text('My Holdings'),
       ),
-      body: Center(
+      body: const Center(
         child: Text('My Holdings'),
       ),
     );

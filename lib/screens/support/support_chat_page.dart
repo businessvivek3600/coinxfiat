@@ -3,6 +3,7 @@ import 'package:nb_utils/nb_utils.dart';
 
 import '../../component/component_index.dart';
 import '../../utils/utils_index.dart';
+import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
 class SupportChatPage extends StatefulWidget {
   const SupportChatPage({super.key, this.title, this.lastSeen});
@@ -13,10 +14,18 @@ class SupportChatPage extends StatefulWidget {
 }
 
 class _SupportChatPageState extends State<SupportChatPage> {
+  final ValueNotifier<List<types.Message>> messages =
+      ValueNotifier<List<types.Message>>([]);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomChatWidget(
+        user: types.User(id: '67aad196-c1dc-4b83-9a2c-bfab56c323a8'),
+        messagesList: messages,
+        onSendPressed: (message) async {
+          // messages.value = [...messages.value, message];
+          return true;
+        },
         appBar: (messages, user) =>
             _ChatPageAppBar(title: widget.title, lastSeen: widget.lastSeen),
       ),

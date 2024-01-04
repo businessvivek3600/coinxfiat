@@ -1,3 +1,6 @@
+import 'dart:developer';
+
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 MyLogger logger = MyLogger();
@@ -157,5 +160,35 @@ class MyLogger {
     MyLogger().f("<-- END HTTP",
         tag: "--> options.uri {options.method options.path}",
         error: 'options.headers.toString()');
+  }
+}
+
+void p(dynamic message) {
+  if (kDebugMode) {
+    print(message);
+  }
+}
+
+void pl(dynamic message, [String? tag]) =>
+    log(message.toString(), name: tag ?? 'MyLogger');
+
+Future<T?> tryAsync<T>(Future<T?> method,
+    [String tag = '', T? defaultValue]) async {
+  try {
+    await method;
+  } catch (e) {
+    logger.e(e, tag: tag);
+    return defaultValue;
+  }
+  return null;
+}
+
+///with return type T
+T? tryCatch<T>(T? Function() method, [String tag = '', T? defaultValue]) {
+  try {
+    return method();
+  } catch (e) {
+    logger.e(e, tag: tag);
+    return defaultValue;
   }
 }

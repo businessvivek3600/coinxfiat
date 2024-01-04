@@ -1,10 +1,14 @@
 import 'dart:io';
 
+import 'package:coinxfiat/constants/constants_index.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
+import 'package:nb_utils/nb_utils.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -14,30 +18,158 @@ import 'package:http/http.dart' as http;
 import '../utils/utils_index.dart';
 
 class CustomChatWidget extends StatefulWidget {
-  const CustomChatWidget({super.key, this.appBar, this.hideInput = true});
-  final PreferredSizeWidget Function(
-      List<types.Message> messages, types.User user)? appBar;
+  const CustomChatWidget({
+    super.key,
+    this.appBar,
+    this.hideInput = true,
+    required this.user,
+    required this.messagesList,
+    this.enableImageSelection = true,
+    this.enableFileSelection = false,
+    required this.onSendPressed,
+  });
+  final Widget Function(List<types.Message> messages, types.User user)? appBar;
   final bool hideInput;
+  final types.User user;
+  final bool enableImageSelection;
+  final bool enableFileSelection;
+  final Future<bool> Function(dynamic message) onSendPressed;
+  final ValueNotifier<List<types.Message>> messagesList;
   @override
   State<CustomChatWidget> createState() => _CustomChatWidgetState();
 }
 
 class _CustomChatWidgetState extends State<CustomChatWidget> {
-  List<types.Message> _messages = [];
-  final _user = const types.User(
-    id: '82091008-a484-4a89-ae75-a22bf8d6f3ac',
-  );
+  final chatController = TextEditingController();
+  // final widget.user = const types.User(
+  //   id: '82091008-a484-4a89-ae75-a22bf8d6f3ac',
+  // );
 
   @override
   void initState() {
     super.initState();
+    widget.messagesList.addListener(() {
+      pl('a new message added', 'listener');
+    });
     _loadMessages();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   void _addMessage(types.Message message) {
-    setState(() {
-      _messages.insert(0, message);
-    });
+    p(message.toJson());
+    widget.messagesList.value.insert(0, message);
+    setState(() {});
+  }
+
+  void _handleImageSelection() async {
+    final result = await ImagePicker().pickImage(
+        imageQuality: 70, maxWidth: 1440, source: ImageSource.gallery);
+    widget.onSendPressed(result);
+    return;
+
+    if (result != null) {
+      final bytes = await result.readAsBytes();
+      final image = await decodeImageFromList(bytes);
+      final message = types.ImageMessage(
+        author: widget.user,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+        height: image.height.toDouble(),
+        id: const Uuid().v4(),
+        name: result.name,
+        size: bytes.length,
+        uri: 'https://wallpapers.com/images/featured/hd-a5u9zq0a0ymy2dug.jpg',
+        // uri: result.path,
+        width: image.width.toDouble(),
+      );
+
+      _addMessage(message);
+    }
+  }
+
+  void _handleMessageTap(BuildContext _, types.Message message) async {
+    if (message is types.FileMessage) {
+      var localPath = message.uri;
+
+      if (message.uri.startsWith('http')) {
+        try {
+          final index = widget.messagesList.value
+              .indexWhere((element) => element.id == message.id);
+          final updatedMessage =
+              (widget.messagesList.value[index] as types.FileMessage).copyWith(
+            isLoading: true,
+          );
+
+          setState(() {
+            widget.messagesList.value[index] = updatedMessage;
+          });
+
+          final client = http.Client();
+          final request = await client.get(Uri.parse(message.uri));
+          final bytes = request.bodyBytes;
+          final documentsDir = (await getApplicationDocumentsDirectory()).path;
+          localPath = '$documentsDir/${message.name}';
+
+          if (!File(localPath).existsSync()) {
+            final file = File(localPath);
+            await file.writeAsBytes(bytes);
+          }
+        } finally {
+          final index = widget.messagesList.value
+              .indexWhere((element) => element.id == message.id);
+          final updatedMessage =
+              (widget.messagesList.value[index] as types.FileMessage).copyWith(
+            isLoading: null,
+          );
+
+          setState(() {
+            widget.messagesList.value[index] = updatedMessage;
+          });
+        }
+      }
+
+      await OpenFilex.open(localPath);
+    }
+  }
+
+  void _handlePreviewDataFetched(
+    types.TextMessage message,
+    types.PreviewData previewData,
+  ) {
+    final index = widget.messagesList.value
+        .indexWhere((element) => element.id == message.id);
+    final updatedMessage =
+        (widget.messagesList.value[index] as types.TextMessage).copyWith(
+      previewData: previewData,
+    );
+    widget.messagesList.value[index] = updatedMessage;
+  }
+
+  void _handleSendPressed(types.PartialText message) async {
+    if (message.text.trim().isEmpty) {
+      return;
+    }
+    await widget.onSendPressed(message.text.trim());
+    // final textMessage = types.TextMessage(
+    //   author: widget.user,
+    //   createdAt: DateTime.now().millisecondsSinceEpoch,
+    //   id: const Uuid().v4(),
+    //   text: message.text,
+    // );
+
+    // _addMessage(textMessage);
+    // chatController.clear();
+  }
+
+  void _loadMessages() async {
+    pl('Loading messages... ${widget.user.id}');
+    final messages = tryCatch(
+            () => chatJson.map((e) => types.Message.fromJson(e)).toList()) ??
+        [];
+    widget.messagesList.value = messages;
   }
 
   void _handleAttachmentPressed() {
@@ -85,10 +217,11 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
 
   void _handleFileSelection() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
-
+    widget.onSendPressed(result);
+    return;
     if (result != null && result.files.single.path != null) {
       final message = types.FileMessage(
-        author: _user,
+        author: widget.user,
         createdAt: DateTime.now().millisecondsSinceEpoch,
         id: const Uuid().v4(),
         mimeType: lookupMimeType(result.files.single.path!),
@@ -101,133 +234,116 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
     }
   }
 
-  void _handleImageSelection() async {
-    final result = await ImagePicker().pickImage(
-      imageQuality: 70,
-      maxWidth: 1440,
-      source: ImageSource.gallery,
-    );
-
-    if (result != null) {
-      final bytes = await result.readAsBytes();
-      final image = await decodeImageFromList(bytes);
-
-      final message = types.ImageMessage(
-        author: _user,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-        height: image.height.toDouble(),
-        id: const Uuid().v4(),
-        name: result.name,
-        size: bytes.length,
-        uri: result.path,
-        width: image.width.toDouble(),
-      );
-
-      _addMessage(message);
-    }
-  }
-
-  void _handleMessageTap(BuildContext _, types.Message message) async {
-    if (message is types.FileMessage) {
-      var localPath = message.uri;
-
-      if (message.uri.startsWith('http')) {
-        try {
-          final index =
-              _messages.indexWhere((element) => element.id == message.id);
-          final updatedMessage =
-              (_messages[index] as types.FileMessage).copyWith(
-            isLoading: true,
-          );
-
-          setState(() {
-            _messages[index] = updatedMessage;
-          });
-
-          final client = http.Client();
-          final request = await client.get(Uri.parse(message.uri));
-          final bytes = request.bodyBytes;
-          final documentsDir = (await getApplicationDocumentsDirectory()).path;
-          localPath = '$documentsDir/${message.name}';
-
-          if (!File(localPath).existsSync()) {
-            final file = File(localPath);
-            await file.writeAsBytes(bytes);
-          }
-        } finally {
-          final index =
-              _messages.indexWhere((element) => element.id == message.id);
-          final updatedMessage =
-              (_messages[index] as types.FileMessage).copyWith(
-            isLoading: null,
-          );
-
-          setState(() {
-            _messages[index] = updatedMessage;
-          });
-        }
-      }
-
-      await OpenFilex.open(localPath);
-    }
-  }
-
-  void _handlePreviewDataFetched(
-    types.TextMessage message,
-    types.PreviewData previewData,
-  ) {
-    final index = _messages.indexWhere((element) => element.id == message.id);
-    final updatedMessage = (_messages[index] as types.TextMessage).copyWith(
-      previewData: previewData,
-    );
-
-    setState(() {
-      _messages[index] = updatedMessage;
-    });
-  }
-
-  void _handleSendPressed(types.PartialText message) {
-    final textMessage = types.TextMessage(
-      author: _user,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      id: const Uuid().v4(),
-      text: message.text,
-    );
-
-    _addMessage(textMessage);
-  }
-
-  void _loadMessages() async {
-    try {
-      // final response = await rootBundle.loadString(jsonEncode(chatJson));
-      final messages = chatJson.map((e) => types.Message.fromJson(e)).toList();
-
-      setState(() {
-        _messages = messages;
-      });
-    } catch (e) {
-      logger.e(
-        'Failed to load messages. See console for details.',
-        error: e,
-      );
-    }
-  }
-
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: widget.appBar?.call(_messages, _user),
-        body: Chat(
-          messages: _messages,
-          onAttachmentPressed: _handleAttachmentPressed,
-          onMessageTap: _handleMessageTap,
-          onPreviewDataFetched: _handlePreviewDataFetched,
-          onSendPressed: _handleSendPressed,
-          showUserAvatars: true,
-          showUserNames: true,
-          user: _user,
-          customBottomWidget: widget.hideInput ? null : SizedBox.shrink(),
+  Widget build(BuildContext context) {
+    Widget chat = ValueListenableBuilder<List<types.Message>>(
+        valueListenable: widget.messagesList,
+        builder: (_, messages, __) {
+          p(messages.length);
+          return Chat(
+            messages: messages,
+            // onAttachmentPressed: _handleAttachmentPressed,
+            onMessageTap: _handleMessageTap,
+            onPreviewDataFetched: _handlePreviewDataFetched,
+            onSendPressed: _handleSendPressed,
+            showUserAvatars: true,
+            showUserNames: true,
+            user: widget.user,
+            // customBottomWidget: widget.hideInput ? null : SizedBox.shrink(),
+            customBottomWidget: _customBottomWidget(context),
+          );
+        });
+
+    return ValueListenableBuilder<List<types.Message>>(
+        valueListenable: widget.messagesList,
+        builder: (_, messages, __) {
+          return Column(
+            children: [
+              if (widget.appBar != null)
+                widget.appBar!.call(messages, widget.user),
+              Expanded(child: chat),
+              if (widget.hideInput) const SizedBox.shrink(),
+            ],
+          );
+        });
+
+    ///show keyboard
+    return Expanded(
+      child: Scaffold(
+        // appBar: widget.appBar?.call(_messages, widget.user),
+        appBar: AppBar(
+          title: const TextField(),
         ),
-      );
+        body: Column(
+          children: [
+            Expanded(child: chat),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Container _customBottomWidget(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: DEFAULT_PADDING / 2),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: const BorderRadiusDirectional.vertical(
+            top: Radius.circular(DEFAULT_PADDING)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            blurRadius: 5,
+            spreadRadius: 1,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      width: context.width(),
+      child: Row(
+        children: [
+          IconButton(
+              // onPressed: _handleAttachmentPressed,
+              onPressed:
+                  widget.enableImageSelection && widget.enableFileSelection
+                      ? _handleAttachmentPressed
+                      : widget.enableImageSelection
+                          ? _handleImageSelection
+                          : widget.enableFileSelection
+                              ? _handleFileSelection
+                              : null,
+              icon: const FaIcon(FontAwesomeIcons.fileCirclePlus,
+                  color: Colors.white)),
+          Expanded(
+            child: TextField(
+              controller: chatController,
+              decoration: const InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                border: InputBorder.none,
+                hintText: 'Type a message',
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () => _handleSendPressed(
+                types.PartialText(text: chatController.text.trim())),
+            icon: Transform.rotate(
+              angle: -3.14 / 5,
+              child: const Icon(
+                Icons.send,
+                color: Color.fromARGB(255, 250, 250, 250),
+              ),
+            ),
+          ),
+        ],
+      ).paddingBottom(MediaQuery.of(context).viewInsets.bottom > 0
+          ? 0
+          : (defaultTargetPlatform == TargetPlatform.iOS
+              ? DEFAULT_PADDING
+              : 0)),
+    );
+  }
 }
 
 var chatJson = [

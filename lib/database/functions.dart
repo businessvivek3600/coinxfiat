@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:coinxfiat/screens/auth/auth_screen.dart';
-import 'package:coinxfiat/utils/string_extensions.dart';
+import 'package:coinxfiat/utils/extensions.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +11,6 @@ import 'package:intl/intl.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:flutter_custom_tabs/flutter_custom_tabs.dart' as custom_tabs;
@@ -19,6 +18,7 @@ import 'package:flutter_custom_tabs/flutter_custom_tabs.dart';
 
 import '../constants/constants_index.dart';
 import '../main.dart';
+import '../store/store_index.dart';
 import '../utils/utils_index.dart';
 import 'app_update/upgrader.dart';
 
@@ -450,7 +450,7 @@ void doIfLoggedIn(BuildContext context, VoidCallback callback) {
   if (appStore.isLoggedIn) {
     callback.call();
   } else {
-    const AuthScreen(returnExpected: true, login: true)
+    const AuthScreen(returnExpected: true, returnPath: '')
         .launch(context)
         .then((value) {
       if (value ?? false) {

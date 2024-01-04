@@ -13,7 +13,8 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
+class _DashboardState extends State<Dashboard>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   int currentIndex = 0;
 
   @override
@@ -31,20 +32,32 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     // init();
   }
 
+  Future<bool> onWillPop() async {
+    if (currentIndex != 0) {
+      _onDestinationSelected(0);
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: dashboardScaffoldKey,
-      drawer: const DashboardDrawer(),
-      body: [
-        const DashboardFragment(),
-        const WalletFragment(),
-        const AdvertisementFragment(),
-        const ProfileFragment()
-      ][currentIndex],
-      bottomNavigationBar: DashBoardBottomNavBar(
-        onDestinationSelected: _onDestinationSelected,
-        currentIndex: currentIndex,
+    return DoublePressBackWidget(
+      onWillPop: onWillPop,
+      child: Scaffold(
+        key: dashboardScaffoldKey,
+        drawer: const DashboardDrawer(),
+        body: [
+          const DashboardFragment(),
+          const WalletFragment(),
+          const AdvertisementFragment(),
+          const ProfileFragment()
+        ][currentIndex],
+        bottomNavigationBar: DashBoardBottomNavBar(
+          onDestinationSelected: _onDestinationSelected,
+          currentIndex: currentIndex,
+        ),
       ),
     );
   }

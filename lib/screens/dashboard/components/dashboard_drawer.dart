@@ -1,5 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:math';
 
+import 'package:coinxfiat/services/auth_services.dart';
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:coinxfiat/widgets/widget_index.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +15,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../../../component/component_index.dart';
 import '../../../constants/constants_index.dart';
 import '../../../routes/route_index.dart';
+import '../../../store/store_index.dart';
 
 ///drawer node id
 ValueNotifier<String> _drawerNodeId = ValueNotifier<String>('');
@@ -279,7 +283,7 @@ class _DrawerItemsTreeState extends State<DrawerItemsTree> {
           _notificationCount.value++;
           break;
         case 'Completed':
-          context.push(Paths.tradeList('completed', null));
+          context.push(Paths.tradeList('complete', null));
           break;
         case 'Setup Wallet':
           context.pushNamed(Routes.htmlPage, queryParameters: {
@@ -351,8 +355,15 @@ class _DrawerItemsTreeState extends State<DrawerItemsTree> {
               message: 'Are you sure you want to logout?',
               confirmText: 'Logout',
               onConfirm: () async {
-                // await context.pushNamedAndRemoveUntil(Routes.login,
-                //     predicate: (route) => false);
+                appStore.setLoading(true);
+                var res = await AuthService().logout();
+                // await 5.seconds.delay;
+                appStore.setLoading(false);
+                // LoadingWidget.showLoadingDialog(context);
+                // context.goTo(LoginRoute());
+                if (res) {
+                  context.goNamed(Routes.login);
+                }
               },
             ));
   }

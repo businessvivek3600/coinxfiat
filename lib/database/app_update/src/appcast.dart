@@ -5,6 +5,7 @@
  */
 
 import 'dart:convert' show utf8;
+import 'dart:developer';
 
 import 'package:http/http.dart' as http;
 import 'package:version/version.dart';
@@ -48,7 +49,7 @@ class Appcast {
     }
 
     AppcastItem? bestItem;
-    items!.forEach((AppcastItem item) {
+    for (var item in items!) {
       if (item.hostSupportsItem(
               osVersion: osVersionString,
               currentPlatform: upgraderOS.current) &&
@@ -63,11 +64,11 @@ class Appcast {
               bestItem = item;
             }
           } on Exception catch (e) {
-            print('upgrader: criticalUpdateItem invalid version: $e');
+            log('upgrader: criticalUpdateItem invalid version: $e');
           }
         }
       }
-    });
+    }
     return bestItem;
   }
 
@@ -79,7 +80,7 @@ class Appcast {
     }
 
     AppcastItem? bestItem;
-    items!.forEach((AppcastItem item) {
+    for (var item in items!) {
       if (item.hostSupportsItem(
           osVersion: osVersionString, currentPlatform: upgraderOS.current)) {
         if (bestItem == null) {
@@ -92,11 +93,11 @@ class Appcast {
               bestItem = item;
             }
           } on Exception catch (e) {
-            print('upgrader: bestItem invalid version: $e');
+            log('upgrader: bestItem invalid version: $e');
           }
         }
       }
-    });
+    }
     return bestItem;
   }
 
@@ -106,7 +107,7 @@ class Appcast {
     try {
       response = await client.get(Uri.parse(appCastURL));
     } catch (e) {
-      print('upgrader: parseAppcastItemsFromUri exception: $e');
+      log('upgrader: parseAppcastItemsFromUri exception: $e');
       return null;
     }
     final contents = utf8.decode(response.bodyBytes);
@@ -150,7 +151,7 @@ class Appcast {
         String? itemVersion;
         String? enclosureVersion;
 
-        itemElement.children.forEach((XmlNode childNode) {
+        for (var childNode in itemElement.children) {
           if (childNode is XmlElement) {
             final name = childNode.name.toString();
             if (name == AppcastConstants.ElementTitle) {
@@ -158,7 +159,7 @@ class Appcast {
             } else if (name == AppcastConstants.ElementDescription) {
               itemDescription = childNode.innerText;
             } else if (name == AppcastConstants.ElementEnclosure) {
-              childNode.attributes.forEach((XmlAttribute attribute) {
+              for (var attribute in childNode.attributes) {
                 if (attribute.name.toString() ==
                     AppcastConstants.AttributeVersion) {
                   enclosureVersion = attribute.value;
@@ -169,7 +170,7 @@ class Appcast {
                     AppcastConstants.AttributeURL) {
                   fileURL = attribute.value;
                 }
-              });
+              }
             } else if (name == AppcastConstants.ElementMaximumSystemVersion) {
               maximumSystemVersion = childNode.innerText;
             } else if (name == AppcastConstants.ElementMinimumSystemVersion) {
@@ -179,17 +180,17 @@ class Appcast {
             } else if (name == AppcastConstants.ElementReleaseNotesLink) {
               releaseNotesLink = childNode.innerText;
             } else if (name == AppcastConstants.ElementTags) {
-              childNode.children.forEach((XmlNode tagChildNode) {
+              for (var tagChildNode in childNode.children) {
                 if (tagChildNode is XmlElement) {
                   final tagName = tagChildNode.name.toString();
                   tags.add(tagName);
                 }
-              });
+              }
             } else if (name == AppcastConstants.AttributeVersion) {
               itemVersion = childNode.innerText;
             }
           }
-        });
+        }
 
         if (itemVersion == null) {
           newVersion = enclosureVersion;
@@ -219,7 +220,7 @@ class Appcast {
 
       items = localItems;
     } catch (e) {
-      print('upgrader: parseItemsFromXMLString exception: $e');
+      log('upgrader: parseItemsFromXMLString exception: $e');
     }
 
     return items;
@@ -278,7 +279,7 @@ class AppcastItem {
       try {
         osVersionValue = Version.parse(osVersion);
       } catch (e) {
-        print('upgrader: hostSupportsItem invalid osVersion: $e');
+        log('upgrader: hostSupportsItem invalid osVersion: $e');
         return false;
       }
       if (maximumSystemVersion != null) {
@@ -288,7 +289,7 @@ class AppcastItem {
             supported = false;
           }
         } on Exception catch (e) {
-          print('upgrader: hostSupportsItem invalid maximumSystemVersion: $e');
+          log('upgrader: hostSupportsItem invalid maximumSystemVersion: $e');
         }
       }
       if (supported && minimumSystemVersion != null) {
@@ -298,7 +299,7 @@ class AppcastItem {
             supported = false;
           }
         } on Exception catch (e) {
-          print('upgrader: hostSupportsItem invalid minimumSystemVersion: $e');
+          log('upgrader: hostSupportsItem invalid minimumSystemVersion: $e');
         }
       }
     }
