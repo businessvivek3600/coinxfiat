@@ -1,5 +1,4 @@
 import 'package:coinxfiat/constants/constants_index.dart';
-import 'package:coinxfiat/main.dart';
 
 import '../store/store_index.dart';
 import '/utils/colors.dart';

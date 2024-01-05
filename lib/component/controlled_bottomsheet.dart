@@ -10,7 +10,7 @@ class ControlledBottomSheet extends StatefulWidget {
     required this.builder,
     this.header,
     ValueNotifier<bool>? sheetMinimized,
-    bool initialValue = false,
+    bool initiallyMinimized = false,
     this.minimizedHeight = 100,
     this.maximizedHeight = 350,
     this.decoration,
@@ -23,7 +23,8 @@ class ControlledBottomSheet extends StatefulWidget {
     this.showButton = true,
     this.enableDragHint = true,
     this.toolTipText,
-  }) : _sheetMinimized = sheetMinimized ?? ValueNotifier<bool>(initialValue);
+  }) : _sheetMinimized =
+            sheetMinimized ?? ValueNotifier<bool>(initiallyMinimized);
   final double minimizedHeight;
   final double maximizedHeight;
   final BoxDecoration? decoration;
@@ -64,6 +65,7 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    bool showHeaderMargin = widget.header == null;
     return ValueListenableBuilder<bool>(
       valueListenable: widget._sheetMinimized,
       builder: (context, sheetMinimized, _) {
@@ -106,7 +108,7 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
                                         const EdgeInsets.all(DEFAULT_PADDING),
                                     child: Text(
                                         widget.toolTipText ??
-                                            'Long press to drag',
+                                            'Long press to drag and resize the view',
                                         style: primaryTextStyle()),
                                   ),
                                   triggerMode: TooltipTriggerMode.tap,
@@ -122,7 +124,7 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
                             child: widget.header?.call(context,
                                     widget._sheetMinimized, sheetMinimized) ??
                                 Container()),
-                        10.width,
+                        // 10.width,
 
                         ///animated arrow up-down icon
                         if (widget.showButton)
@@ -131,9 +133,8 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
                               builder: (context, child) {
                                 return Container(
                                   decoration: BoxDecoration(
-                                    color: context.primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
+                                      color: context.primaryColor,
+                                      shape: BoxShape.circle),
                                   child: Icon(
                                     sheetMinimized
                                         ? Icons.keyboard_arrow_up
@@ -141,13 +142,12 @@ class _ControlledBottomSheetState extends State<ControlledBottomSheet> {
                                     color: whiteColor,
                                   ),
                                 );
-                              }).onTap(() => toogleSheet()),
+                              }).onTap(() => toogleSheet()).paddingAll(10),
                       ],
-                    ).paddingAll(10),
+                    ).paddingAll(showHeaderMargin ? 10 : 0),
               Expanded(
-                child: widget.builder(
-                    context, widget._sheetMinimized, sheetMinimized),
-              ),
+                  child: widget.builder(
+                      context, widget._sheetMinimized, sheetMinimized)),
             ],
           ),
         );

@@ -18,7 +18,7 @@ class LoggingInterceptor extends InterceptorsWrapper {
     logger.i(
       'onResponse:',
       tag:
-          '${response.requestOptions.method}  ${response.requestOptions.path} ${response.statusCode}${calculateResponseTime(response.requestOptions.extra['response_time'])}ms',
+          '${response.requestOptions.method}  ${response.requestOptions.path} ${response.statusCode} ${calculateResponseTime(response.requestOptions.extra['response_time'])}ms',
     );
     return super.onResponse(response, handler);
   }
@@ -27,7 +27,7 @@ class LoggingInterceptor extends InterceptorsWrapper {
   Future onError(DioException err, ErrorInterceptorHandler handler) async {
     logger.e('onError:',
         tag:
-            '${err.requestOptions.method}  ${err.requestOptions.path} ${err.response?.statusCode}${calculateResponseTime(err.requestOptions.extra['response_time'])}ms',
+            '${err.requestOptions.method}  ${err.requestOptions.path} ${err.response?.statusCode} ${calculateResponseTime(err.requestOptions.extra['response_time'])}ms',
         error: err.response?.data);
     ApiHandler.getMessage(err);
     return super.onError(err, handler);
@@ -35,6 +35,7 @@ class LoggingInterceptor extends InterceptorsWrapper {
 
   int calculateResponseTime(DateTime startTime) {
     final endTime = DateTime.now();
-    return endTime.difference(startTime).inDays;
+    int difference = endTime.difference(startTime).inMilliseconds;
+    return difference;
   }
 }

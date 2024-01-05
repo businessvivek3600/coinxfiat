@@ -16,12 +16,14 @@ class SupportChatPage extends StatefulWidget {
 class _SupportChatPageState extends State<SupportChatPage> {
   final ValueNotifier<List<types.Message>> messages =
       ValueNotifier<List<types.Message>>([]);
+  final ValueNotifier<bool> loading = ValueNotifier<bool>(false);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomChatWidget(
         user: types.User(id: '67aad196-c1dc-4b83-9a2c-bfab56c323a8'),
         messagesList: messages,
+        loading: loading,
         onSendPressed: (message) async {
           // messages.value = [...messages.value, message];
           return true;

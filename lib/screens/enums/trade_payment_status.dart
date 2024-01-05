@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../utils/utils_index.dart';
 
-enum TradePaymentStatus { pending, paid, cancelled, def, disputed, completed }
+enum TradePaymentStatus {
+  pending, // 0
+  paid, // 1
+  def, // 2
+  cancelled, // 3
+  completed, // 4
+  disputed, // 5
+  funded, // 6
+  released, // 7
+}
 
 extension TradePaymentStatusExt on TradePaymentStatus {
   String get name {
@@ -17,6 +26,12 @@ extension TradePaymentStatusExt on TradePaymentStatus {
         return 'Disputed';
       case TradePaymentStatus.completed:
         return 'Completed';
+      case TradePaymentStatus.funded:
+        return 'Funded';
+      case TradePaymentStatus.released:
+        return 'Released';
+      case TradePaymentStatus.def:
+        return 'Default';
       default:
         return 'Unknown';
     }
@@ -34,6 +49,13 @@ extension TradePaymentStatusExt on TradePaymentStatus {
         return inProgressColor;
       case TradePaymentStatus.completed:
         return completedColor;
+      case TradePaymentStatus.funded:
+        return runningColor;
+      case TradePaymentStatus.released:
+        return completedColor;
+      case TradePaymentStatus.def:
+        return Colors.grey;
+
       default:
         return Colors.grey;
     }
@@ -62,12 +84,18 @@ extension TradePaymentStatusExt on TradePaymentStatus {
         return TradePaymentStatus.pending;
       case 1:
         return TradePaymentStatus.paid;
+      case 2:
+        return TradePaymentStatus.def;
       case 3:
         return TradePaymentStatus.cancelled;
       case 4:
         return TradePaymentStatus.completed;
       case 5:
         return TradePaymentStatus.disputed;
+      case 6:
+        return TradePaymentStatus.funded;
+      case 7:
+        return TradePaymentStatus.released;
       default:
         return TradePaymentStatus.def;
     }

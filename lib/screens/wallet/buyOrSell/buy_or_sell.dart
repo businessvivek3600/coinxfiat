@@ -365,8 +365,9 @@ class _BuySellField extends StatelessWidget {
                     maximizedHeight: selling ? 550 : 350,
                     listener: onSheetChange,
                     header: (_, notifier, val) => Text(
-                        'How much you wish to buy?',
-                        style: boldTextStyle()),
+                            'How much you wish to buy?',
+                            style: boldTextStyle())
+                        .paddingLeft(DEFAULT_PADDING),
                     builder: (context, notifier, sheetMinimized) {
                       return SingleChildScrollView(
                         padding: const EdgeInsets.all(DEFAULT_PADDING),

@@ -64,6 +64,7 @@ class DioClient {
     ProgressCallback? onReceiveProgress,
   }) async {
     try {
+      CancelToken cancelToken = CancelToken();
       log('get : ${dio.options.headers} ${appStore.token}');
       var response = await dio.get(
         uri,
@@ -93,6 +94,7 @@ class DioClient {
     bool token = false,
   }) async {
     try {
+      CancelToken cancelToken = CancelToken();
       // FormData formData = FormData();
       // formData.fields.addAll((data ?? <String, dynamic>{})
       //     .entries

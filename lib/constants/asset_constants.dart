@@ -103,4 +103,5 @@ class MyLottie {
   static const String uploadingArrow = 'uploading_arrow.json';
   static const String uploadingCircleArrow = 'uploading_circle_arrow.json';
   static const String uploading = 'uploading.json';
+  static const String chatLoading = 'chat_loading.json';
 }

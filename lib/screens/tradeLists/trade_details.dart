@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -31,7 +30,7 @@ class TradeDetails extends StatefulWidget {
 
 class _TradeDetailsState extends State<TradeDetails> {
   ///trade information
-  final ValueNotifier<bool> _infoExpanded = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _infoExpanded = ValueNotifier<bool>(true);
 
   ///terms of trade
   final ValueNotifier<bool> _termsExpanded = ValueNotifier<bool>(false);
@@ -49,6 +48,7 @@ class _TradeDetailsState extends State<TradeDetails> {
   final ValueNotifier<bool> _isAuther = ValueNotifier<bool>(false);
   final ValueNotifier<Trade> _trade = ValueNotifier<Trade>(Trade());
   final ValueNotifier<List<Sender>> users = ValueNotifier<List<Sender>>([]);
+  int extraTime = 0;
 
   ///get trade details
   Future<void> _getTradeDetails() async {
@@ -66,8 +66,10 @@ class _TradeDetailsState extends State<TradeDetails> {
                 .map((e) => Sender.fromJson(e))
                 .toList()) ??
             [];
+        extraTime =
+            tryCatch<int>(() => value.$2['configure']['trade_extra_time']) ?? 0;
       }
-      pl('Trade Details: ${_trade.value} -> ${_isAuther.value} -> ${users.value.length}');
+      pl('Trade Details: hashSlug -> ${_trade.value.hashSlug} -> ${_isAuther.value} -> ${users.value.length}');
     }).whenComplete(() => _loading.value = false);
   }
 
@@ -80,12 +82,9 @@ class _TradeDetailsState extends State<TradeDetails> {
           valueListenable: _trade,
           builder: (context, trade, child) {
             return trade.hashSlug.validate().isEmpty
-                ? Container()
-                : _Chat(
-                    loading: _loading,
-                    trade: trade,
-                  );
-          }),
+                ? Container(height: 0)
+                : _Chat(trade: trade);
+          }).visible(true),
     );
   }
 
@@ -96,6 +95,14 @@ class _TradeDetailsState extends State<TradeDetails> {
           return ValueListenableBuilder<Trade>(
               valueListenable: _trade,
               builder: (context, trade, child) {
+                TradePaymentStatus status = TradePaymentStatusExt.fromInt(
+                    trade.status.validate(value: -1));
+                bool isOwner = trade.ownerId == appStore.userId;
+                bool buy = trade.type == 'buy';
+                print(
+                    'isOwner: $isOwner w-${trade.ownerId} s-${trade.senderId} u-${appStore.userId} ');
+
+                Sender? anotherUser = isOwner ? trade.sender : trade.owner;
                 return AnimatedScrollView(
                   listAnimationType: ListAnimationType.FadeIn,
                   children: [
@@ -116,368 +123,223 @@ class _TradeDetailsState extends State<TradeDetails> {
                                       style: boldTextStyle())),
                               10.width,
                               Text(
-                                  TradePaymentStatusExt.fromInt(
-                                          trade.status.validate(value: -1))
-                                      .name,
-                                  style: boldTextStyle(
-                                      color: TradePaymentStatusExt.fromInt(0)
-                                          .color)),
+                                      TradePaymentStatusExt.fromInt(
+                                              trade.status.validate(value: -1))
+                                          .name,
+                                      style: boldTextStyle(
+                                          color:
+                                              TradePaymentStatusExt.fromInt(0)
+                                                  .color))
+                                  .withShaderMaskGradient(
+                                LinearGradient(
+                                    colors: [
+                                      TradePaymentStatusExt.fromInt(0).color,
+                                      TradePaymentStatusExt.fromInt(0).color
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight),
+                              ),
                             ],
                           ).skeletonize(enabled: loading),
                           10.height,
 
                           /// accepted payment methods
                           _paymentMethods(trade, loading: loading),
-                          10.height,
+                          if (status != TradePaymentStatus.cancelled &&
+                              status != TradePaymentStatus.completed &&
+                              trade.status != 8)
+                            Builder(builder: (context) {
+                              DateTime remainingTime = DateTime.parse(
+                                      // trade.timeRemaining.validate() + 'z'
+                                      '2023-01-05T14:18:30.000000Z')
+                                  .toLocal()
+                                  .add((Duration(
+                                      minutes: trade.paymentWindow.validate() +
+                                          extraTime)));
+                              bool isBefore =
+                                  DateTime.now().isBefore(remainingTime);
+                              pl('remainingTime: $remainingTime isBefore: $isBefore');
 
-                          ///note1
-                          Text('Please pay ${trade.payAmount.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'} to the seller',
-                                  style: secondaryTextStyle(color: alertColor))
-                              .skeletonize(enabled: loading),
-                          10.height,
+                              return Column(
+                                children: [
+                                  /// for buyer (sender)
+                                  Column(
+                                    children: [
+                                      /// if pending and sell
+                                      Column(
+                                        children: [
+                                          Text('Please pay ${trade.payAmount.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'} to the seller',
+                                                  style: secondaryTextStyle(
+                                                      color: alertColor))
+                                              .paddingBottom(10),
+                                          Text('${trade.receiveAmount.convertDouble(8)} ${trade.receiverCurrency?.code.validate() ?? 'N/A'} will be added to your wallet after confirmation about the payment.',
+                                                  style: secondaryTextStyle())
+                                              .skeletonize(enabled: loading)
+                                              .paddingBottom(10)
+                                        ],
+                                      ).visible(status ==
+                                              TradePaymentStatus.pending &&
+                                          !buy),
+                                      Text('Once the buyer has confirmed your payment then ${trade.receiveAmount.convertDouble(8)} ${trade.receiverCurrency?.code.validate() ?? 'N/A'} will be available for release.',
+                                              style: secondaryTextStyle())
+                                          .paddingBottom(10)
+                                          .visible(status ==
+                                                  TradePaymentStatus.pending &&
+                                              buy),
 
-                          ///note2
-                          Text('${trade.currency?.code.validate() ?? ''}  ${trade.currency?.code.validate() ?? 'N/A'} will be added to your wallet after confirmation about the payment.',
-                                  style: secondaryTextStyle())
-                              .skeletonize(enabled: loading),
-                          20.height,
-                          Row(
-                            children: [
-                              Expanded(
-                                  child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: rejectedColor),
-                                onPressed: () {},
-                                child: const Text('Cancel',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                              )),
-                              10.width,
-                              Expanded(
-                                  child: ElevatedButton(
-                                      onPressed: () {},
-                                      child: const Text(
-                                        'I have Paid',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ))),
-                            ],
-                          ),
+                                      Text('This trade is Reported by ${trade.disputeBy == trade.sender?.id ? trade.sender?.fullName.validate() : trade.owner?.fullName.validate()}. Please wait for the system response.',
+                                              style: secondaryTextStyle())
+                                          .paddingBottom(10)
+                                          .visible(status ==
+                                              TradePaymentStatus.disputed),
+
+                                      ///TODO: match exctly to the web code
+                                      Text('You can dispute this trade after === TIMER',
+                                              style: secondaryTextStyle())
+                                          .visible(status ==
+                                                  TradePaymentStatus.paid &&
+                                              isBefore &&
+                                              !buy)
+                                          .paddingBottom(10),
+
+                                      Row(
+                                        children: [
+                                          _button('Cancel Trade',
+                                              bgColor: cancelledColor,
+                                              onPressed: () {}),
+                                          10.width,
+                                          _button('I have Paid',
+                                              bgColor: acceptColor,
+                                              onPressed: () {}),
+                                        ],
+                                      ).visible(status ==
+                                              TradePaymentStatus.pending &&
+                                          !buy),
+                                      Row(children: [
+                                        _button('Dispute Trade',
+                                            bgColor: cancelledColor,
+                                            onPressed: () {}),
+                                        10.width,
+                                        _button('Payment Received',
+                                            bgColor: acceptColor,
+                                            onPressed: () {}),
+                                      ]).visible(
+                                          status == TradePaymentStatus.paid &&
+                                              buy),
+                                      Row(children: [
+                                        _button('Dispute Trade',
+                                            bgColor: cancelledColor,
+                                            onPressed: () {}),
+                                        10.width,
+                                        _button('Payment Received',
+                                            bgColor: acceptColor,
+                                            onPressed: () {}),
+                                      ]).visible(
+                                          status == TradePaymentStatus.paid &&
+                                              !isBefore &&
+                                              !buy),
+                                    ],
+                                  ).visible(!isOwner),
+
+                                  /// for seller (owner)
+                                  Column(
+                                    children: [
+                                      /// if pending and sell
+                                      Column(
+                                        children: [
+                                          ///timer
+                                          Text('You can dispute this trade afte === TIMER',
+                                                  style: secondaryTextStyle())
+                                              .visible(status ==
+                                                      TradePaymentStatus.paid &&
+                                                  isBefore &&
+                                                  buy)
+                                              .paddingBottom(10),
+
+                                          ///
+                                          Text('Please pay ${trade.payAmount.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'} to the seller',
+                                                  style: secondaryTextStyle(
+                                                      color: alertColor))
+                                              .paddingBottom(10),
+                                          Text('${trade.receiveAmount.convertDouble(8)} ${trade.receiverCurrency?.code.validate() ?? 'N/A'} will be added to your wallet after confirmation about the payment.',
+                                                  style: secondaryTextStyle())
+                                              .skeletonize(enabled: loading)
+                                              .paddingBottom(10),
+                                          Row(
+                                            children: [
+                                              _button('Cancel Trade',
+                                                  bgColor: cancelledColor,
+                                                  onPressed: () {}),
+                                              10.width,
+                                              _button('I have Paid',
+                                                  bgColor: acceptColor,
+                                                  onPressed: () {}),
+                                            ],
+                                          ),
+                                        ],
+                                      ).visible(status ==
+                                              TradePaymentStatus.pending &&
+                                          buy),
+
+                                      Text('Once the buyer has confirmed your payment then ${trade.receiveAmount.convertDouble(8)} ${trade.receiverCurrency?.code.validate() ?? 'N/A'} will be available for release.',
+                                              style: secondaryTextStyle())
+                                          .paddingBottom(10)
+                                          .visible(status ==
+                                                  TradePaymentStatus.pending &&
+                                              buy),
+
+                                      status == TradePaymentStatus.disputed
+                                          ? Text('This trade is Reported by ${trade.disputeBy == trade.sender?.id ? trade.sender?.fullName.validate() : trade.owner?.fullName.validate()}. Please wait for the system response.',
+                                                  style: secondaryTextStyle())
+                                              .paddingBottom(10)
+                                              .visible(status ==
+                                                  TradePaymentStatus.disputed)
+                                          : Text('The buyer can dispute anytime this trade after countdown time.',
+                                                  style: secondaryTextStyle())
+                                              .paddingBottom(10)
+                                              .visible(status !=
+                                                      TradePaymentStatus
+                                                          .pending &&
+                                                  !buy),
+
+                                      Row(
+                                        children: [
+                                          _button('Cancel Trade',
+                                              bgColor: cancelledColor,
+                                              onPressed: () {}),
+                                        ],
+                                      ).visible(status ==
+                                              TradePaymentStatus.pending &&
+                                          !buy),
+                                      Row(children: [
+                                        _button('Dispute Trade',
+                                            bgColor: cancelledColor,
+                                            onPressed: () {}),
+                                        10.width,
+                                        _button('Release',
+                                            bgColor: acceptColor,
+                                            onPressed: () {}),
+                                      ]).visible(
+                                          status == TradePaymentStatus.paid &&
+                                              !buy),
+                                      Row(children: [
+                                        _button('Dispute Trade',
+                                            bgColor: cancelledColor,
+                                            onPressed: () {}),
+                                      ]).visible(
+                                          status == TradePaymentStatus.paid &&
+                                              !isBefore &&
+                                              buy),
+                                    ],
+                                  ).visible(isOwner),
+                                ],
+                              );
+                            }),
                         ],
                       ),
                     ),
                     10.height,
-                    Container(
-                      width: context.width(),
-                      color: Colors.grey.withOpacity(0.1),
-                      padding: const EdgeInsets.all(DEFAULT_PADDING),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ///trade information
-                          _DefaultExpantionTile(
-                            infoExpanded: _infoExpanded,
-                            title: 'Trade Information',
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Buyer', style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        trade.owner?.fullName.validate() ?? '',
-                                        style: boldTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Rate', style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        '${trade.rate.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'} / ${trade.receiverCurrency?.code.validate() ?? 'N/A'}',
-                                        style: boldTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(trade.currency?.name.validate() ?? '',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        '${trade.payAmount.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'}',
-                                        style: boldTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              )
-                                  .visible(trade.currency != null)
-                                  .paddingBottom(10),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                      trade.receiverCurrency?.name.validate() ??
-                                          '',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        '${trade.receiveAmount} ${trade.receiverCurrency?.code.validate() ?? 'N/A'}',
-                                        style: boldTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              )
-                                  .visible(trade.receiverCurrency != null)
-                                  .paddingBottom(10),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Payment Window',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        '${trade.paymentWindow.validate()} minutes',
-                                        style: boldTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          10.height,
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('#Instructions to be followed',
-                                  style: boldTextStyle()),
-                              10.height,
-                              Text(
-                                  '1. Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                  style: secondaryTextStyle()),
-                              10.height,
-                              Text(
-                                  '2. After making payment, please click on the "I have paid" button and wait for the seller to confirm the payment.',
-                                  style: secondaryTextStyle()),
-                              10.height,
-                              Text(
-                                  '3. After the seller confirms the payment, the cryptocurrency will be released from the escrow and will be available in your wallet.',
-                                  style: secondaryTextStyle()),
-                              10.height,
-                              Text(
-                                  '4. If you have any questions or concerns, please open a dispute.',
-                                  style: secondaryTextStyle()),
-                              10.height,
-                              Text(
-                                  '5. If you do not have a wallet, please create one before opening a trade.',
-                                  style: secondaryTextStyle()),
-                            ],
-                          ).skeletonize(enabled: loading),
-                          10.height,
-
-                          ///terms of trade
-                          _DefaultExpantionTile(
-                            infoExpanded: _termsExpanded,
-                            title: 'Terms of Trade with SumitSharma',
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('1. Trade Instructions',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('2. Payment Window',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text('45 minutes',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('3. Payment Method',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text('Bank Transfer',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('4. Terms of Trade',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('5. Trade Instructions',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('6. Trade Instructions',
-                                        style: primaryTextStyle()),
-                                    10.width,
-                                    Expanded(
-                                        child: Text(
-                                      'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                      style: secondaryTextStyle(),
-                                    )),
-                                  ]),
-                            ],
-                          ),
-
-                          10.height,
-
-                          ///payment details
-                          _DefaultExpantionTile(
-                            infoExpanded: _paymentExpanded,
-                            title: 'Payment Details',
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('1. Trade Instructions',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('2. Payment Window',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text('45 minutes',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('3. Payment Method',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text('Bank Transfer',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('4. Terms of Trade',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('5. Trade Instructions',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                    child: Text(
-                                        'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                        style: secondaryTextStyle(),
-                                        textAlign: TextAlign.right),
-                                  ),
-                                ],
-                              ),
-                              10.height,
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('6. Trade Instructions',
-                                      style: primaryTextStyle()),
-                                  10.width,
-                                  Expanded(
-                                      child: Text(
-                                    'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
-                                    style: secondaryTextStyle(),
-                                  )),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    _details(context, trade, loading, anotherUser),
                     30.height,
                     assetImages(MyPng.logoLBlack, height: 100, width: 200)
                         .center(),
@@ -486,6 +348,312 @@ class _TradeDetailsState extends State<TradeDetails> {
                 );
               });
         });
+  }
+
+  Container _details(
+      BuildContext context, Trade trade, bool loading, Sender? anotherUser) {
+    return Container(
+      width: context.width(),
+      color: Colors.grey.withOpacity(0.1),
+      padding: const EdgeInsets.all(DEFAULT_PADDING),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ///trade information
+          _DefaultExpantionTile(
+            infoExpanded: _infoExpanded,
+            title: 'Trade Information',
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Buyer', style: primaryTextStyle()),
+                  10.width,
+                  Expanded(
+                    child: Text(trade.owner?.fullName.validate() ?? '',
+                        style: boldTextStyle(), textAlign: TextAlign.right),
+                  ),
+                ],
+              ),
+              10.height,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Rate', style: primaryTextStyle()),
+                  10.width,
+                  Expanded(
+                    child: Text(
+                        '${trade.rate.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'} / ${trade.receiverCurrency?.code.validate() ?? 'N/A'}',
+                        style: boldTextStyle(),
+                        textAlign: TextAlign.right),
+                  ),
+                ],
+              ),
+              10.height,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(trade.currency?.name.validate() ?? '',
+                      style: primaryTextStyle()),
+                  10.width,
+                  Expanded(
+                    child: Text(
+                        '${trade.payAmount.convertDouble(8)} ${trade.currency?.code.validate() ?? 'N/A'}',
+                        style: boldTextStyle(),
+                        textAlign: TextAlign.right),
+                  ),
+                ],
+              ).visible(trade.currency != null).paddingBottom(10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(trade.receiverCurrency?.name.validate() ?? '',
+                      style: primaryTextStyle()),
+                  10.width,
+                  Expanded(
+                    child: Text(
+                        '${trade.receiveAmount} ${trade.receiverCurrency?.code.validate() ?? 'N/A'}',
+                        style: boldTextStyle(),
+                        textAlign: TextAlign.right),
+                  ),
+                ],
+              ).visible(trade.receiverCurrency != null).paddingBottom(10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Payment Window', style: primaryTextStyle()),
+                  10.width,
+                  Expanded(
+                    child: Text('${trade.paymentWindow.validate()} minutes',
+                        style: boldTextStyle(), textAlign: TextAlign.right),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          10.height,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('#Instructions to be followed', style: boldTextStyle()),
+              10.height,
+              Text(
+                  '1. Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+                  style: secondaryTextStyle()),
+              10.height,
+              Text(
+                  '2. After making payment, please click on the "I have paid" button and wait for the seller to confirm the payment.',
+                  style: secondaryTextStyle()),
+              10.height,
+              Text(
+                  '3. After the seller confirms the payment, the cryptocurrency will be released from the escrow and will be available in your wallet.',
+                  style: secondaryTextStyle()),
+              10.height,
+              Text(
+                  '4. If you have any questions or concerns, please open a dispute.',
+                  style: secondaryTextStyle()),
+              10.height,
+              Text(
+                  '5. If you do not have a wallet, please create one before opening a trade.',
+                  style: secondaryTextStyle()),
+            ],
+          ).skeletonize(enabled: true).visible(loading),
+          10.height,
+
+          ///terms of trade
+          _DefaultExpantionTile(
+            infoExpanded: _termsExpanded,
+            title: 'Terms of Trade with ${anotherUser?.fullName.validate()}',
+            children: [
+              Text(trade.termsOfTrade.validate(), style: secondaryTextStyle()),
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('1. Trade Instructions', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text(
+              //           'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('2. Payment Window', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text('45 minutes',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('3. Payment Method', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text('Bank Transfer',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('4. Terms of Trade', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text(
+              //           'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('5. Trade Instructions', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text(
+              //           'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              //   Text('6. Trade Instructions', style: primaryTextStyle()),
+              //   10.width,
+              //   Expanded(
+              //       child: Text(
+              //     'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //     style: secondaryTextStyle(),
+              //   )),
+              // ]),
+            ],
+          ),
+
+          10.height,
+
+          ///payment details
+          _DefaultExpantionTile(
+            infoExpanded: _paymentExpanded,
+            title: 'Payment Details',
+            children: [
+              Text(trade.paymentDetails.validate(),
+                  style: secondaryTextStyle()),
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('1. Trade Instructions', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text(
+              //           'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('2. Payment Window', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text('45 minutes',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('3. Payment Method', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text('Bank Transfer',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('4. Terms of Trade', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text(
+              //           'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('5. Trade Instructions', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //       child: Text(
+              //           'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //           style: secondaryTextStyle(),
+              //           textAlign: TextAlign.right),
+              //     ),
+              //   ],
+              // ),
+              // 10.height,
+              // Row(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text('6. Trade Instructions', style: primaryTextStyle()),
+              //     10.width,
+              //     Expanded(
+              //         child: Text(
+              //       'Please make payment within the payment window. If you fail to make payment within the payment window, the trade will be cancelled automatically.',
+              //       style: secondaryTextStyle(),
+              //     )),
+              //   ],
+              // ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Expanded _button(
+    String text, {
+    Color bgColor = Colors.red,
+    Color textColor = Colors.white,
+    VoidCallback? onPressed,
+  }) {
+    return Expanded(
+        child: ElevatedButton(
+      style: ElevatedButton.styleFrom(backgroundColor: bgColor),
+      onPressed: onPressed,
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+    ));
   }
 
   Widget _paymentMethods(Trade trade, {required bool loading}) {
@@ -538,18 +706,15 @@ class _TradeDetailsState extends State<TradeDetails> {
                 style: primaryTextStyle(size: 11, weight: FontWeight.w500)),
           ),
           Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 5,
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(DEFAULT_RADIUS * 2),
-              ),
-            ),
-          ),
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 5,
+              child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(DEFAULT_RADIUS * 2))))
         ],
       ),
     );
@@ -574,6 +739,7 @@ class _DefaultExpantionTile extends StatelessWidget {
     return ExpansionTile(
       collapsedBackgroundColor: expandedColor,
       backgroundColor: expandedColor,
+      initiallyExpanded: _infoExpanded.value,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DEFAULT_RADIUS)),
       collapsedShape: RoundedRectangleBorder(
@@ -607,10 +773,8 @@ class _DefaultExpantionTile extends StatelessWidget {
 }
 
 class _Chat extends StatefulWidget {
-  const _Chat({Key? key, required this.loading, required this.trade})
-      : super(key: key);
-  static double defaultHeight = 300;
-  final ValueNotifier<bool> loading;
+  const _Chat({Key? key, required this.trade}) : super(key: key);
+  static double defaultHeight = 500;
   final Trade trade;
 
   @override
@@ -618,11 +782,14 @@ class _Chat extends StatefulWidget {
 }
 
 class _ChatState extends State<_Chat> {
+  ///sheet variables
   final ValueNotifier<double> _maximumHeight =
       ValueNotifier<double>(_Chat.defaultHeight);
-
+  final ValueNotifier<bool> sheetMinimized = ValueNotifier<bool>(false);
   final ValueNotifier<bool> _dragging = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> loadingChat = ValueNotifier<bool>(true);
 
+  ///chat variables
   final ValueNotifier<List<types.Message>> messages =
       ValueNotifier<List<types.Message>>([]);
   late types.User user;
@@ -632,7 +799,7 @@ class _ChatState extends State<_Chat> {
     super.initState();
     user = types.User(id: appStore.userId.validate().toString());
     onConnectPressed();
-    afterBuildCreated(() => getIntiialMessages());
+    afterBuildCreated(() => getChatMessages());
   }
 
   @override
@@ -646,26 +813,45 @@ class _ChatState extends State<_Chat> {
     if (mounted) super.setState(fn);
   }
 
-  getIntiialMessages() async {
-    int perPage = 20;
+  getChatMessages([dynamic chatId, int perPage = 20]) async {
+    pl('getChatMessages: ${widget.trade.hashSlug.validate()} $chatId');
     if (widget.trade.hashSlug.validate().isEmpty) return;
-    Apis.getTradeChatMessagesApi(widget.trade.hashSlug.validate(),
-            perPage: perPage, chatId: null)
+    loadingChat.value = true;
+    // await 5.seconds.delay;
+    await Apis.getTradeChatMessagesApi(widget.trade.hashSlug.validate(),
+            perPage: perPage, chatId: chatId)
         .then((value) async {
       if (value.$1) {
         final messageList = <types.Message>[];
         for (var e in ((value.$2['chats'] ?? []) as List)) {
           pl(e);
-          var message = tryCatch(() => messageFromJson(e));
+          var message = tryCatch(() => messageFromJson(e), 'getChatMessages');
           if (message == null) continue;
           messageList.add(message);
         }
         await (perPage * 10).milliseconds.delay;
-        messages.value.insertAll(0, messageList);
-        pl(messages.value.length);
-        setState(() {});
+        if (messageList.isNotEmpty) {
+          for (var message in messageList) {
+            bool contains =
+                messages.value.any((element) => element.id == message.id);
+            if (!contains) {
+              // chatId == null
+              //     ?
+              messages.value.add(message);
+              // : messages.value.insert(0, message);
+            } else {
+              var index = messages.value
+                  .indexWhere((element) => element.id == message.id);
+              messages.value[index] = message;
+            }
+          }
+        }
+        // messages.value.insertAll(0, messageList);
+        pl('messages: ${messages.value.length}', 'getChatMessages');
       }
     });
+    loadingChat.value = false;
+    setState(() {});
   }
 
   types.Message? messageFromJson(Map<String, dynamic> json) {
@@ -677,11 +863,15 @@ class _ChatState extends State<_Chat> {
     String id = json['id'].toString().validate();
     types.Status status =
         json['is_read'] == 1 ? types.Status.seen : types.Status.sent;
+    String firstName = json['chatable']['fullname'].toString().validate();
+    // String lastName = json['chatable']['username'].toString().validate();
     types.User user = types.User.fromJson({
-      "firstName": json['chatable']['username'],
+      "firstName": firstName,
       "id": (json['chatable']['id'] ?? '').toString(),
-      "lastName": "",
-      'imageUrl': json['chatable']['imgPath'],
+      // "lastName": lastName,
+      'imageUrl':
+          'https://ui-avatars.com/api/?size=256&name=$firstName&background=ffc107&color=fff&=true',
+      // 'imageUrl': json['chatable']['imgPath'],
     });
     String text = json['description'].toString().validate();
 
@@ -823,11 +1013,21 @@ class _ChatState extends State<_Chat> {
     bool listen = event.channelName ==
         AppConst.pusherAppChatTopic + widget.trade.hashSlug.validate();
     pl('onEvent: listen this:=> $listen ${event.channelName} \n ${event.data}');
-    if (listen) {
+    if (listen &&
+        (event.data is Map<String, dynamic>) &&
+        event.data.isNotEmpty) {
       types.Message? message =
           tryCatch(() => messageFromJson(jsonDecode(event.data)['message']));
       if (message != null) {
-        messages.value.insert(0, message);
+        bool contains =
+            messages.value.any((element) => element.id == message.id);
+        if (!contains) {
+          messages.value.insert(0, message);
+        } else {
+          var index =
+              messages.value.indexWhere((element) => element.id == message.id);
+          messages.value[index] = message;
+        }
         setState(() {});
       }
     }
@@ -865,7 +1065,7 @@ class _ChatState extends State<_Chat> {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
-        valueListenable: widget.loading,
+        valueListenable: loadingChat,
         builder: (context, loading, child) {
           return ValueListenableBuilder<bool>(
               valueListenable: _dragging,
@@ -873,37 +1073,49 @@ class _ChatState extends State<_Chat> {
                 return ValueListenableBuilder<double>(
                     valueListenable: _maximumHeight,
                     builder: (context, maximumHeight, child) {
+                      bool isOwner = widget.trade.owner?.id == appStore.userId;
+                      // print(
+                      //     'isOwner: $isOwner w-${widget.trade.owner?.id} s-${widget.trade.sender?.id} u-${appStore.userId} ');
+
+                      Sender? anotherUser =
+                          isOwner ? widget.trade.sender : widget.trade.owner;
+                      String fullName = anotherUser?.fullName.validate() ?? '';
+                      bool isOnline = anotherUser?.status == 1;
                       return ControlledBottomSheet(
-                          padding: const EdgeInsets.all(0),
+                          // padding: const EdgeInsets.all(0),
                           minimizedHeight: 70,
                           maximizedHeight: maximumHeight,
                           showLine: false,
                           showButton: false,
                           enableDragHint: true,
+                          initiallyMinimized: true,
+                          sheetMinimized: sheetMinimized,
                           header: (_, notifier, sheetMinimized) => _header(
                                 notifier,
                                 sheetMinimized,
                                 context,
                                 dragging,
-                                username:
-                                    widget.trade.owner?.fullName.validate() ??
-                                        '',
-                                isOnline: widget.trade.owner?.status == 1,
+                                username: fullName,
+                                isOnline: isOnline,
                               ),
                           builder: (context, notifier, sheetMinimized) {
                             return CustomChatWidget(
-                              hideInput: false,
+                              hideInput: sheetMinimized,
                               // enableFileSelection: true,
                               // enableImageSelection: false,
                               messagesList: messages,
                               onSendPressed: sendMessage,
-
+                              loading: loadingChat,
+                              onLoadMore: () async {
+                                await getChatMessages(
+                                    int.tryParse(messages.value.last.id), 20);
+                              },
                               user: user,
                               // users: [trade.sender?.toJson()??{}, trade.owner?.toJson()??{}],
                             );
                           });
                     });
-              }).visible(!loading);
+              });
         });
   }
 
@@ -913,8 +1125,8 @@ class _ChatState extends State<_Chat> {
     return JustTheTooltip(
       content: Padding(
         padding: const EdgeInsets.all(DEFAULT_PADDING),
-        child:
-            Text('Long press and drag up and down', style: primaryTextStyle()),
+        child: Text('Long press and drag to resize the view',
+            style: primaryTextStyle()),
       ),
       triggerMode: TooltipTriggerMode.tap,
       tailBuilder: JustTheInterface.defaultBezierTailBuilder,
@@ -940,6 +1152,7 @@ class _ChatState extends State<_Chat> {
                   val: sheetMinimized,
                   username: username,
                   isOnline: isOnline,
+                  dragging: dragging,
                 ),
 
                 ///drag handle
@@ -962,72 +1175,76 @@ class _ChatState extends State<_Chat> {
   }
 }
 
-class _stf extends StatefulWidget {
-  const _stf({super.key});
-
-  @override
-  State<_stf> createState() => _stfState();
-}
-
-class _stfState extends State<_stf> {
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text(Random().nextInt(100000).toString()));
-  }
-}
-
 class _CustomChatHeader extends StatelessWidget {
   const _CustomChatHeader(
       {Key? key,
       required this.notifier,
       required this.val,
       required this.username,
-      required this.isOnline})
+      required this.isOnline,
+      required this.dragging})
       : super(key: key);
+
+  /// sheet close notifier
   final ValueNotifier<bool> notifier;
   final bool val;
   final String username;
   final bool isOnline;
+  final bool dragging;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 50,
       width: context.width(),
-      color: Colors.white,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(children: [16.width, Text(username, style: boldTextStyle())]),
-          Expanded(
-            child: Row(
-              children: [
-                const Spacer(),
-                Text(isOnline ? 'Online' : 'Offline',
-                    style: secondaryTextStyle()),
-                5.width,
-                Icon(Icons.circle,
-                    color: isOnline ? Colors.green : Colors.grey, size: 10),
-                10.width,
-                (val
-                        ? Container(
-                            padding: const EdgeInsetsDirectional.symmetric(
-                                horizontal: DEFAULT_PADDING,
-                                vertical: DEFAULT_PADDING / 3),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.8),
-                              borderRadius:
-                                  BorderRadius.circular(DEFAULT_RADIUS * 2),
-                            ),
-                            child: Text('Chat',
-                                style: boldTextStyle(
-                                    size: 12, color: Colors.white)))
-                        : const Icon(Icons.close, color: Colors.grey))
-                    .onTap(() => notifier.value = !val),
-              ],
+      decoration: boxDecorationRoundedWithShadow(
+        0,
+        shadowColor: Colors.black.withOpacity(0.1),
+        backgroundColor: Colors.white.withOpacity(1),
+        blurRadius: 50,
+        spreadRadius: 50,
+        offset: const Offset(0, -15),
+      ),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 200),
+        scale: dragging ? 0.6 : 1,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(children: [16.width, Text(username, style: boldTextStyle())]),
+            Expanded(
+              child: Row(
+                children: [
+                  const Spacer(),
+                  Text(isOnline ? 'Online' : 'Offline',
+                          style: secondaryTextStyle())
+                      .paddingRight(5),
+                  Icon(Icons.circle,
+                          color: isOnline ? Colors.green : Colors.grey,
+                          size: 10)
+                      .paddingRight(10),
+                  (val
+                          ? Container(
+                              padding: const EdgeInsetsDirectional.symmetric(
+                                  horizontal: DEFAULT_PADDING,
+                                  vertical: DEFAULT_PADDING / 3),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.8),
+                                borderRadius:
+                                    BorderRadius.circular(DEFAULT_RADIUS * 2),
+                              ),
+                              child: Text('Chat',
+                                  style: boldTextStyle(
+                                      size: 12, color: Colors.white)))
+                          : const Icon(Icons.close, color: Colors.grey))
+                      .onTap(() => notifier.value = !val)
+                      .paddingRight(10)
+                      .visible(!dragging),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

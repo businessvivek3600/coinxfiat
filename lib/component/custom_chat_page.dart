@@ -7,6 +7,7 @@ import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:open_filex/open_filex.dart';
@@ -17,16 +18,20 @@ import 'package:http/http.dart' as http;
 
 import '../utils/utils_index.dart';
 
+ValueNotifier<bool> loadingMore = ValueNotifier(false);
+
 class CustomChatWidget extends StatefulWidget {
   const CustomChatWidget({
     super.key,
     this.appBar,
-    this.hideInput = true,
+    this.hideInput = false,
     required this.user,
     required this.messagesList,
     this.enableImageSelection = true,
     this.enableFileSelection = false,
     required this.onSendPressed,
+    required this.loading,
+    this.onLoadMore,
   });
   final Widget Function(List<types.Message> messages, types.User user)? appBar;
   final bool hideInput;
@@ -34,7 +39,9 @@ class CustomChatWidget extends StatefulWidget {
   final bool enableImageSelection;
   final bool enableFileSelection;
   final Future<bool> Function(dynamic message) onSendPressed;
+  final Future<void> Function()? onLoadMore;
   final ValueNotifier<List<types.Message>> messagesList;
+  final ValueNotifier<bool> loading;
   @override
   State<CustomChatWidget> createState() => _CustomChatWidgetState();
 }
@@ -43,6 +50,7 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
   final chatController = TextEditingController();
   ValueNotifier<bool> sendingText = ValueNotifier(false);
   ValueNotifier<bool> sendingFile = ValueNotifier(false);
+  final FocusNode _focusNode = FocusNode();
   // final widget.user = const types.User(
   //   id: '82091008-a484-4a89-ae75-a22bf8d6f3ac',
   // );
@@ -50,6 +58,7 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
   @override
   void initState() {
     super.initState();
+    loadingMore.value = false;
     widget.messagesList.addListener(() {
       pl('a new message added', 'listener');
     });
@@ -165,6 +174,7 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
   void _handleSendPressed(types.PartialText message) async {
     if (message.text.trim().isEmpty) return;
     chatController.clear();
+    _focusNode.requestFocus();
     sendingText.value = true;
     await widget.onSendPressed(message.text.trim());
     sendingText.value = false;
@@ -179,11 +189,11 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
   }
 
   void _loadMessages() async {
-    pl('Loading messages... ${widget.user.id}');
-    final messages = tryCatch(
-            () => chatJson.map((e) => types.Message.fromJson(e)).toList()) ??
-        [];
-    widget.messagesList.value = messages;
+    // pl('Loading messages... ${widget.user.id}');
+    // final messages = tryCatch(
+    //         () => chatJson.map((e) => types.Message.fromJson(e)).toList()) ??
+    //     [];
+    // widget.messagesList.value = messages;
   }
 
   void _handleAttachmentPressed() {
@@ -252,22 +262,53 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
 
   @override
   Widget build(BuildContext context) {
-    Widget chat = ValueListenableBuilder<List<types.Message>>(
-        valueListenable: widget.messagesList,
-        builder: (_, messages, __) {
-          p(messages.length);
-          return Chat(
-            messages: messages,
-            // onAttachmentPressed: _handleAttachmentPressed,
-            onMessageTap: _handleMessageTap,
-            onPreviewDataFetched: _handlePreviewDataFetched,
-            onSendPressed: _handleSendPressed,
-            showUserAvatars: true,
-            showUserNames: true,
-            user: widget.user,
-            // customBottomWidget: widget.hideInput ? null : SizedBox.shrink(),
-            customBottomWidget: _customBottomWidget(context),
-          );
+    Widget chat = ValueListenableBuilder<bool>(
+        valueListenable: widget.loading,
+        builder: (_, loading, __) {
+          return ValueListenableBuilder<bool>(
+              valueListenable: loadingMore,
+              builder: (_, _loadingMore, __) {
+                return ValueListenableBuilder<List<types.Message>>(
+                    valueListenable: widget.messagesList,
+                    builder: (_, messages, __) {
+                      pl('messages.length  ${messages.length} loading $loading',
+                          'CustomChatWidget');
+                      return Chat(
+                        messages: [...messages],
+                        // onAttachmentPressed: _handleAttachmentPressed,
+                        onMessageTap: _handleMessageTap,
+                        onPreviewDataFetched: _handlePreviewDataFetched,
+                        onSendPressed: _handleSendPressed,
+                        showUserAvatars: true,
+                        showUserNames: true,
+                        isAttachmentUploading: true,
+                        // dateIsUtc: true,
+                        dateLocale: 'en_US',
+                        dateFormat: DateFormat('dd MMM yyyy'),
+                        user: widget.user,
+                        isLastPage: false,
+                        onEndReached: () async {
+                          if (_loadingMore) return;
+                          pl('loading more $_loadingMore');
+                          loadingMore.value = true;
+                          await widget.onLoadMore?.call();
+                          loadingMore.value = false;
+                        },
+                        onEndReachedThreshold: -200,
+                        emptyState: loading
+                            ? Center(
+                                child: assetLottie(MyLottie.chatLoading,
+                                    width: 100, height: 70))
+                            : messages.isEmpty
+                                ? const Center(child: Text('No messages yet'))
+                                : const Text(''),
+                        customBottomWidget: !widget.hideInput
+                            ? _customBottomWidget(context)
+                            : const SizedBox.shrink(),
+                        // customBottomWidget: _customBottomWidget(context),
+                      );
+                    });
+              });
         });
 
     return ValueListenableBuilder<List<types.Message>>(
@@ -344,12 +385,16 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
                       Expanded(
                         child: TextField(
                           controller: chatController,
+                          // autofocus: true,
+                          focusNode: _focusNode,
                           decoration: const InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
                             border: InputBorder.none,
                             hintText: 'Type a message',
                           ),
+                          onSubmitted: (value) => _handleSendPressed(
+                              types.PartialText(text: value.trim())),
                         ),
                       ),
                       if (sending)

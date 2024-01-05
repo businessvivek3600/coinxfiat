@@ -51,7 +51,7 @@ class ApiConst {
       "user/trade/details/$slug"; //trade list
   static String tradeChatMessages(String slug,
           {int perPage = 10, int? chatId}) =>
-      'user/push-chat-show/$slug?perpage=$perPage${chatId != null ? '&chatId=$chatId' : ''}';
+      'user/push-chat-show/$slug?perpage=$perPage${chatId != null ? '&chat_id=$chatId' : ''}';
   static const String pushTradeMessage = 'user/push-chat-newMessage';
   static const String liveAuctionProducts = "live-auction-products";
   static const String upcomingAuctionProducts = "upcoming-auction-products";

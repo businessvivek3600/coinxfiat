@@ -323,7 +323,7 @@ class Sender {
   String? updatedAt;
   int? completedTrade;
   int? totalMin;
-  String? tradeLimit;
+  int? tradeLimit;
   bool? lastSeen;
   String? fcmToken;
   List<String>? notifyActiveTemplate;
