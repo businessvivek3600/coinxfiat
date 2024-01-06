@@ -213,6 +213,24 @@ class Apis {
     return (false, <String, dynamic>{}, null);
   }
 
+  ///trade action by id
+  static Future<(bool status, Map<String, dynamic> data, String? message)>
+      tradeActionByIdApi(String endPoint, String id) async {
+    try {
+      var (bool _status, Map<String, dynamic> data, String? message) =
+          await ApiHandler.fetchData(ApiConst.tradeActionById(endPoint),
+              method: ApiMethod.POST, data: {'tradeId': id});
+      if (_status && data.isNotEmpty) {
+        return (true, data, message);
+      } else {
+        return (false, <String, dynamic>{}, message);
+      }
+    } catch (e) {
+      logger.e('tradeActionByIdApi error : $e', tag: tag);
+    }
+    return (false, <String, dynamic>{}, null);
+  }
+
   /// get trade chat messages
   static Future<(bool status, Map<String, dynamic> data, String? message)>
       getTradeChatMessagesApi(String slug,
@@ -358,6 +376,83 @@ class Apis {
       }
     } catch (e) {
       logger.e('updateProfileApi error : $e', tag: tag);
+    }
+    return (false, <String, dynamic>{}, null);
+  }
+
+  ///Support
+  ///tickets
+  static Future<(bool status, Map<String, dynamic> data, String? message)>
+      getTicketsApi(int page) async {
+    try {
+      var (bool status, Map<String, dynamic> data, String? message) =
+          await ApiHandler.fetchData('${ApiConst.tickets}?page=$page',
+              method: ApiMethod.GET);
+      if (status && data.isNotEmpty) {
+        return (true, data['data'] as Map<String, dynamic>, message);
+      } else {
+        return (false, <String, dynamic>{}, message);
+      }
+    } catch (e) {
+      logger.e('getTicketsApi error : $e', tag: tag);
+    }
+    return (false, <String, dynamic>{}, null);
+  }
+
+  ///create ticket
+  static Future<(bool status, Map<String, dynamic> data, String? message)>
+      createTicketApi(Map<String, dynamic> info) async {
+    try {
+      var (bool status, Map<String, dynamic> data, String? message) =
+          await ApiHandler.fetchData(ApiConst.tickets,
+              method: ApiMethod.POST, data: info);
+      if (status && data.isNotEmpty) {
+        return (true, data['data'] as Map<String, dynamic>, message);
+      } else {
+        return (false, <String, dynamic>{}, message);
+      }
+    } catch (e) {
+      logger.e('createTicketApi error : $e', tag: tag);
+    }
+    return (false, <String, dynamic>{}, null);
+  }
+
+  ///create ticket message
+  static Future<(bool status, Map<String, dynamic> data, String? message)>
+      replyTicket(dynamic info) async {
+    try {
+      var (bool status, Map<String, dynamic> data, String? message) =
+          await ApiHandler.fetchData(ApiConst.ticketById(info['ticket_id']),
+              method: ApiMethod.POST, data: info);
+      if (status && data.isNotEmpty) {
+        return (true, data['data'] as Map<String, dynamic>, message);
+      } else {
+        return (false, <String, dynamic>{}, message);
+      }
+    } catch (e) {
+      logger.e('createTicketMessageApi error : $e', tag: tag);
+    }
+    return (false, <String, dynamic>{}, null);
+  }
+
+  ///get ticket messages by id
+  static Future<(bool status, Map<String, dynamic> data, String? message)>
+      getTicketMessagesByIdApi(String id, int? chatId) async {
+    try {
+      var (
+        bool status,
+        Map<String, dynamic> data,
+        String? message
+      ) = await ApiHandler.fetchData(
+          '${ApiConst.ticketById(id)}${chatId != null ? '?chat_id=$chatId' : ''}',
+          method: ApiMethod.GET);
+      if (status && data.isNotEmpty) {
+        return (true, data['data'] as Map<String, dynamic>, message);
+      } else {
+        return (false, <String, dynamic>{}, message);
+      }
+    } catch (e) {
+      logger.e('getTicketMessagesByIdApi error : $e', tag: tag);
     }
     return (false, <String, dynamic>{}, null);
   }

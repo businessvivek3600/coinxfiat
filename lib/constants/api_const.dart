@@ -49,9 +49,17 @@ class ApiConst {
       "user/trade/list/$type?page=$page${adId != null && adId.isNotEmpty ? '&adId=$adId' : ''}"; //trade list
   static String tradeDetails(String slug) =>
       "user/trade/details/$slug"; //trade list
+  static String tradeActionById(String endPoint) =>
+      'user/trade/$endPoint'; // trade action
   static String tradeChatMessages(String slug,
           {int perPage = 10, int? chatId}) =>
       'user/push-chat-show/$slug?perpage=$perPage${chatId != null ? '&chat_id=$chatId' : ''}';
+
+  ///tickes
+  static const String tickets = "user/ticket";
+  static const String createTicket = "user/ticket/create";
+  static String ticketById(String id) => "user/ticket/view/$id";
+  static String ticketReply(String id) => "user/ticket/reply/$id";
   static const String pushTradeMessage = 'user/push-chat-newMessage';
   static const String liveAuctionProducts = "live-auction-products";
   static const String upcomingAuctionProducts = "upcoming-auction-products";

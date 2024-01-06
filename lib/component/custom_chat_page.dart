@@ -29,6 +29,7 @@ class CustomChatWidget extends StatefulWidget {
     required this.messagesList,
     this.enableImageSelection = true,
     this.enableFileSelection = false,
+    this.showUserAvatar = true,
     required this.onSendPressed,
     required this.loading,
     this.onLoadMore,
@@ -38,6 +39,8 @@ class CustomChatWidget extends StatefulWidget {
   final types.User user;
   final bool enableImageSelection;
   final bool enableFileSelection;
+  final bool showUserAvatar;
+
   final Future<bool> Function(dynamic message) onSendPressed;
   final Future<void> Function()? onLoadMore;
   final ValueNotifier<List<types.Message>> messagesList;
@@ -279,7 +282,7 @@ class _CustomChatWidgetState extends State<CustomChatWidget> {
                         onMessageTap: _handleMessageTap,
                         onPreviewDataFetched: _handlePreviewDataFetched,
                         onSendPressed: _handleSendPressed,
-                        showUserAvatars: true,
+                        showUserAvatars: widget.showUserAvatar,
                         showUserNames: true,
                         isAttachmentUploading: true,
                         // dateIsUtc: true,

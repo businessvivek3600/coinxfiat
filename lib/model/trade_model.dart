@@ -25,7 +25,7 @@ class Trade {
   String? cancelAt;
   String? disputeAt;
   String? completeAt;
-  String? cancelBy;
+  int? cancelBy;
   int? disputeBy;
   String? paymentDetails;
   String? termsOfTrade;
@@ -39,44 +39,47 @@ class Trade {
   Sender? owner;
   Currency? receiverCurrency;
   Advertisement? advertise;
+  int? timeRemainingInSec;
 
-  Trade(
-      {this.id,
-      this.advertiseId,
-      this.senderId,
-      this.ownerId,
-      this.tradeNumber,
-      this.type,
-      this.currencyId,
-      this.receiverCurrencyId,
-      this.paymentMethod,
-      this.paymentWindow,
-      this.timeRemaining,
-      this.rate,
-      this.payAmount,
-      this.receiveAmount,
-      this.hashSlug,
-      this.status,
-      this.paymentMethodId,
-      this.paymentInfoId,
-      this.paidAt,
-      this.cancelAt,
-      this.disputeAt,
-      this.completeAt,
-      this.cancelBy,
-      this.disputeBy,
-      this.paymentDetails,
-      this.termsOfTrade,
-      this.processingMinutes,
-      this.adminCharge,
-      this.createdAt,
-      this.updatedAt,
-      this.gateways,
-      this.sender,
-      this.currency,
-      this.owner,
-      this.receiverCurrency,
-      this.advertise});
+  Trade({
+    this.id,
+    this.advertiseId,
+    this.senderId,
+    this.ownerId,
+    this.tradeNumber,
+    this.type,
+    this.currencyId,
+    this.receiverCurrencyId,
+    this.paymentMethod,
+    this.paymentWindow,
+    this.timeRemaining,
+    this.rate,
+    this.payAmount,
+    this.receiveAmount,
+    this.hashSlug,
+    this.status,
+    this.paymentMethodId,
+    this.paymentInfoId,
+    this.paidAt,
+    this.cancelAt,
+    this.disputeAt,
+    this.completeAt,
+    this.cancelBy,
+    this.disputeBy,
+    this.paymentDetails,
+    this.termsOfTrade,
+    this.processingMinutes,
+    this.adminCharge,
+    this.createdAt,
+    this.updatedAt,
+    this.gateways,
+    this.sender,
+    this.currency,
+    this.owner,
+    this.receiverCurrency,
+    this.advertise,
+    this.timeRemainingInSec = 0,
+  });
 
   Trade.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -90,6 +93,7 @@ class Trade {
     paymentMethod = json['payment_method'].cast<String>();
     paymentWindow = json['payment_window'];
     timeRemaining = json['time_remaining'];
+    timeRemainingInSec = json['time_remaining_s'];
     rate = double.tryParse(json['rate'].toString()) ?? 0.0;
     payAmount = double.tryParse(json['pay_amount'].toString()) ?? 0.0;
     receiveAmount = double.tryParse(json['receive_amount'].toString()) ?? 0.0;
@@ -140,6 +144,7 @@ class Trade {
     data['payment_method'] = paymentMethod;
     data['payment_window'] = paymentWindow;
     data['time_remaining'] = timeRemaining;
+    data['time_remaining_s'] = timeRemainingInSec;
     data['rate'] = rate;
     data['pay_amount'] = payAmount;
     data['receive_amount'] = receiveAmount;

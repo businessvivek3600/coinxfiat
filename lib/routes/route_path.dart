@@ -55,8 +55,8 @@ class Paths {
 
   ///support
   static const String support = '/${Routes.dashboard}/${Routes.support}';
-  static const String chat =
-      '/${Routes.dashboard}/${Routes.support}/${Routes.chat}';
+  static String chat(String id) =>
+      '/${Routes.dashboard}/${Routes.support}/view/$id';
 
   ///widgets
   static const String htmlPage = '/${Routes.dashboard}/${Routes.htmlPage}';

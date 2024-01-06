@@ -43,8 +43,9 @@ class Routes {
   static const String faq = 'faq';
 
   ///support
-  static const String support = 'support';
-  static const String chat = 'chat';
+  static const String support = 'ticket';
+  static const String ticketView = 'view';
+  // static const String chat = 'chat';
 
   ///widgets
   static const String htmlPage = 'html-page';

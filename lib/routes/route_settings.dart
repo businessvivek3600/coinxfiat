@@ -199,15 +199,19 @@ final GoRouter goRouter = GoRouter(
               animatedRoute(state, (state) => const SupportTicketsPage()),
           routes: [
             GoRoute(
-              path: Routes.chat,
-              name: Routes.chat,
+              path: '${Routes.ticketView}/:id',
+              name: Routes.ticketView,
               pageBuilder: (context, state) => animatedRoute(
-                  state,
-                  (state) => SupportChatPage(
-                        title: state.uri.queryParameters['title'],
-                        lastSeen: DateTime.tryParse(
-                            state.uri.queryParameters['lastSeen'] ?? ''),
-                      )),
+                state,
+                (state) => SupportChatPage(
+                    id: state.pathParameters['id'],
+                    title:
+                        tryCatch(() => (state.extra as Map)['title'] ?? '') ??
+                            '',
+                    lastSeen: DateTime.tryParse(tryCatch(
+                            () => (state.extra as Map)['lastSeen'] ?? '') ??
+                        '')),
+              ),
             ),
           ],
         ),

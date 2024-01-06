@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../utils/utils_index.dart';
 
@@ -75,6 +77,27 @@ extension TradePaymentStatusExt on TradePaymentStatus {
         return 5;
       default:
         return 2;
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case TradePaymentStatus.pending:
+        return FontAwesomeIcons.hourglassStart;
+      case TradePaymentStatus.paid:
+        return FontAwesomeIcons.moneyBills;
+      case TradePaymentStatus.cancelled:
+        return CupertinoIcons.clear_circled;
+      case TradePaymentStatus.completed:
+        return FontAwesomeIcons.circleCheck;
+      case TradePaymentStatus.disputed:
+        return FontAwesomeIcons.triangleExclamation;
+      case TradePaymentStatus.funded:
+        return FontAwesomeIcons.moneyBill1Wave;
+      case TradePaymentStatus.released:
+        return FontAwesomeIcons.personCircleCheck;
+      default:
+        return FontAwesomeIcons.question;
     }
   }
 

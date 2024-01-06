@@ -512,6 +512,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _passwordController,
             // focusNode: _passwordFocusNode,
             // obscureText: true,
+            keyboardType: TextInputType.visiblePassword,
             textInputAction: TextInputAction.next,
             decoration: _buildInputDecoration(
               theme,

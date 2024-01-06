@@ -343,7 +343,7 @@ class _BuySellHistoryState extends State<_BuySellHistory>
         _buildBuySellTabBar(context),
 
         /// wallet chips
-        // _buildCryptoChips(),
+        _buildCryptoChips(),
 
         _buildAppliedFilterChips(context),
 

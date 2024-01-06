@@ -1,4 +1,3 @@
-import 'package:coinxfiat/services/service_index.dart';
 import 'package:coinxfiat/utils/utils_index.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -65,21 +64,28 @@ class _DashboardFragmentState extends State<DashboardFragment>
   @override
   Widget build(BuildContext context) {
     return Observer(
-      builder: (_) => Stack(
-        children: [
-          Container(color: context.scaffoldBackgroundColor),
+      builder: (_) => Scaffold(
+        body: Stack(
+          children: [
+            Container(color: context.scaffoldBackgroundColor),
 
-          /// This is the main content
-          _Header(setDefaultHight: (double hight) {}),
+            /// This is the main content
+            _Header(setDefaultHight: (double hight) {}),
 
-          /// This is the trade counts card list in horizontal
-          _RestBody(
-            topPadding:
-                _topPadding >= kToolbarHeight ? _topPadding : kToolbarHeight,
-            scrollController: _scrollController,
-            loading: dashboardStore.isLoading,
-          ),
-        ],
+            /// This is the trade counts card list in horizontal
+            _RestBody(
+              topPadding:
+                  _topPadding >= kToolbarHeight ? _topPadding : kToolbarHeight,
+              scrollController: _scrollController,
+              loading: dashboardStore.isLoading,
+            ),
+          ],
+        ),
+        // bottomSheet: _RestBody(
+        //   topPadding: 0,
+        //   scrollController: _scrollController,
+        //   loading: dashboardStore.isLoading,
+        // ),
       ),
     );
   }
@@ -101,60 +107,147 @@ class _RestBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // return draggable(context);
     return AnimatedPositioned(
-      duration: 500.milliseconds,
+      duration: 100.milliseconds,
       left: 0,
       right: 0,
       bottom: 0,
-      top: _topPadding,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(DEFAULT_RADIUS * 2),
-          topRight: Radius.circular(DEFAULT_RADIUS * 2),
+      top: 0,
+      child: Container(
+        // color: context.scaffoldBackgroundColor,
+        child: draggable(context),
+      ),
+    );
+  }
+
+  DraggableScrollableSheet draggable(BuildContext context) {
+    return DraggableScrollableSheet(
+        builder: (_, controller) {
+          return _body(context);
+        },
+        initialChildSize: 0.7,
+        minChildSize: 0.3,
+        maxChildSize: 1);
+  }
+
+  ClipRRect _body(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(DEFAULT_RADIUS * 2),
+        topRight: Radius.circular(DEFAULT_RADIUS * 2),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+            color: context.scaffoldBackgroundColor,
+            border: Border(
+                top: BorderSide(
+                    color: getTheme(context).colorScheme.secondary,
+                    width: DEFAULT_RADIUS))),
+        child: AnimatedScrollView(
+          fadeInConfiguration: FadeInConfiguration(
+              delay: 100.microseconds,
+              duration: 100.milliseconds,
+              curve: Curves.fastOutSlowIn),
+          listAnimationType: ListAnimationType.FadeIn,
+          padding: EdgeInsets.zero,
+          // controller: _scrollController,
+          disposeScrollController: false,
+          children: [
+            height10(),
+            _countList(context),
+
+            ///dummy container
+            titleLargeText('My Wallets', context).paddingAll(DEFAULT_PADDING),
+            _walletList(context, loading: _loading),
+
+            ///Last 10 Trade Lists
+            height10(),
+            Row(
+              children: [
+                titleLargeText('Last 10 Trades', context)
+                    .paddingOnly(left: DEFAULT_PADDING, right: DEFAULT_PADDING),
+                const Spacer(),
+                bodyMedText('View All', context,
+                        style: boldTextStyle(color: context.primaryColor))
+                    .paddingOnly(right: DEFAULT_PADDING)
+                    .onTap(() => context.push(Paths.tradeList('all', null))),
+              ],
+            ),
+            height10(),
+            ..._last10Trades(context, loading: _loading),
+            10.height,
+
+            /// Company Card
+            height10(),
+            _companyCard(context),
+            height50(),
+          ],
         ),
-        child: Container(
-          decoration: BoxDecoration(
-              color: context.scaffoldBackgroundColor,
-              border: Border(
-                  top: BorderSide(
-                      color: getTheme(context).colorScheme.secondary,
-                      width: DEFAULT_RADIUS))),
-          child: AnimatedScrollView(
-            fadeInConfiguration: FadeInConfiguration(
-                delay: 100.microseconds,
-                duration: 100.milliseconds,
-                curve: Curves.fastOutSlowIn),
-            listAnimationType: ListAnimationType.FadeIn,
-            padding: EdgeInsets.zero,
-            controller: _scrollController,
-            disposeScrollController: false,
+      ),
+    );
+  }
+
+  Widget _companyCard(BuildContext context) {
+    return Container(
+      margin:
+          const EdgeInsets.only(left: DEFAULT_PADDING, right: DEFAULT_PADDING),
+      padding: const EdgeInsets.all(DEFAULT_PADDING),
+      decoration: BoxDecoration(
+        color: context.dividerColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(DEFAULT_RADIUS),
+      ),
+      child: Column(
+        children: [
+          Column(
             children: [
-              height10(),
-              _countList(context),
-
-              ///dummy container
-              titleLargeText('My Wallets', context).paddingAll(DEFAULT_PADDING),
-              _walletList(context, loading: _loading),
-
-              ///Last 10 Trade Lists
-              height10(),
+              20.height,
+              assetImages(MyPng.logoLBlack)
+                  .paddingSymmetric(horizontal: DEFAULT_PADDING),
+              20.height,
               Row(
                 children: [
-                  titleLargeText('Last 10 Trades', context).paddingOnly(
-                      left: DEFAULT_PADDING, right: DEFAULT_PADDING),
-                  const Spacer(),
-                  bodyMedText('View All', context,
-                          style: boldTextStyle(color: context.primaryColor))
-                      .paddingOnly(right: DEFAULT_PADDING)
-                      .onTap(() => context.push(Paths.tradeList('all', null))),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        bodyLargeText('CoinX', context),
+                        height10(),
+                        bodyMedText('Trade Cryptos Seamlessly', context),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              height10(),
-              ..._last10Trades(context, loading: _loading),
-              height50(),
+              width10(),
+              assetImages(MyPng.referandearn, height: 50, width: 50),
             ],
           ),
-        ),
+          height10(),
+          Row(
+            children: [
+              Expanded(
+                child: bodyMedText('Trade Cryptos Seamlessly', context),
+              ),
+              width10(),
+              Expanded(
+                child: bodyMedText('Trade Cryptos Seamlessly', context),
+              ),
+            ],
+          ),
+          height10(),
+          Row(
+            children: [
+              Expanded(
+                child: bodyMedText('Trade Cryptos Seamlessly', context),
+              ),
+              width10(),
+              Expanded(
+                child: bodyMedText('Trade Cryptos Seamlessly', context),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -311,7 +404,7 @@ class _Header extends StatelessWidget {
       top: 0,
       left: 0,
       right: 0,
-      height: context.height() * 0.4,
+      height: context.height() * 0.5,
       child: Container(
           decoration: BoxDecoration(
             // color: context.primaryColor,
@@ -342,10 +435,8 @@ class _Header extends StatelessWidget {
                                 child: CircleAvatar(
                                   radius: DEFAULT_PADDING,
                                   backgroundColor: Colors.transparent,
-                                  backgroundImage: Image.network(
-                                    'https://www.ihna.edu.au/blog/wp-content/uploads/2022/10/user-dummy.png',
-                                    fit: BoxFit.cover,
-                                  ).image,
+                                  backgroundImage:
+                                      assetImages(MyPng.dummyUser).image,
                                   onBackgroundImageError: (e, s) {
                                     // logger.i('error: $e', tag: 'profile home');
                                     // logger.i('stack: $s', tag: 'profile home');
@@ -384,7 +475,7 @@ class _Header extends StatelessWidget {
                     Expanded(
                         flex: 1,
                         child: assetImages(MyPng.referandearn).onTap(() {
-                          AuthService().login('email', 'password');
+                          // AuthService().login('email', 'password');
                         })),
                   ],
                 ).paddingOnly(top: DEFAULT_PADDING),

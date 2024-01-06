@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:just_the_tooltip/just_the_tooltip.dart';
@@ -71,6 +72,21 @@ class _TradeDetailsState extends State<TradeDetails> {
       }
       pl('Trade Details: hashSlug -> ${_trade.value.hashSlug} -> ${_isAuther.value} -> ${users.value.length}');
     }).whenComplete(() => _loading.value = false);
+  }
+
+  /// trade action by id
+  Future<void> _tradeActionById(String endPoint) async {
+    // _loading.value = true;
+    if (_trade.value.id == null) {
+      toast('Trade not found');
+      return;
+    }
+    await Apis.tradeActionByIdApi(endPoint, _trade.value.id!.toString())
+        .then((value) {
+      if (value.$1) {
+        pl('trade action by id: $endPoint -> ${value.$2}');
+      }
+    });
   }
 
   @override
@@ -149,15 +165,22 @@ class _TradeDetailsState extends State<TradeDetails> {
                               status != TradePaymentStatus.completed &&
                               trade.status != 8)
                             Builder(builder: (context) {
-                              DateTime remainingTime = DateTime.parse(
-                                      // trade.timeRemaining.validate() + 'z'
-                                      '2023-01-05T14:18:30.000000Z')
-                                  .toLocal()
-                                  .add((Duration(
-                                      minutes: trade.paymentWindow.validate() +
-                                          extraTime)));
-                              bool isBefore =
-                                  DateTime.now().isBefore(remainingTime);
+                              bool hasTimer =
+                                  trade.timeRemainingInSec.validate() > 0;
+                              bool isBefore = false;
+                              DateTime? remainingTime = DateTime.tryParse(
+                                  trade.timeRemaining.validate()
+                                  // '2023-01-05T14:18:30.000000Z'
+                                  );
+                              remainingTime = remainingTime?.toLocal();
+                              if (remainingTime != null) {
+                                remainingTime.add((Duration(
+                                    minutes: trade.paymentWindow.validate() +
+                                        extraTime)));
+
+                                isBefore =
+                                    DateTime.now().isBefore(remainingTime);
+                              }
                               pl('remainingTime: $remainingTime isBefore: $isBefore');
 
                               return Column(
@@ -269,7 +292,9 @@ class _TradeDetailsState extends State<TradeDetails> {
                                             children: [
                                               _button('Cancel Trade',
                                                   bgColor: cancelledColor,
-                                                  onPressed: () {}),
+                                                  onPressed: () =>
+                                                      _tradeActionById(
+                                                          'cancel')),
                                               10.width,
                                               _button('I have Paid',
                                                   bgColor: acceptColor,
@@ -306,7 +331,8 @@ class _TradeDetailsState extends State<TradeDetails> {
                                         children: [
                                           _button('Cancel Trade',
                                               bgColor: cancelledColor,
-                                              onPressed: () {}),
+                                              onPressed: () =>
+                                                  _tradeActionById('cancel')),
                                         ],
                                       ).visible(status ==
                                               TradePaymentStatus.pending &&
@@ -463,7 +489,8 @@ class _TradeDetailsState extends State<TradeDetails> {
           ///terms of trade
           _DefaultExpantionTile(
             infoExpanded: _termsExpanded,
-            title: 'Terms of Trade with ${anotherUser?.fullName.validate()}',
+            title:
+                'Terms of Trade with ${anotherUser?.fullName.validate() ?? ''}',
             children: [
               Text(trade.termsOfTrade.validate(), style: secondaryTextStyle()),
               // Row(
@@ -785,7 +812,7 @@ class _ChatState extends State<_Chat> {
   ///sheet variables
   final ValueNotifier<double> _maximumHeight =
       ValueNotifier<double>(_Chat.defaultHeight);
-  final ValueNotifier<bool> sheetMinimized = ValueNotifier<bool>(false);
+  late ValueNotifier<bool> sheetMinimized;
   final ValueNotifier<bool> _dragging = ValueNotifier<bool>(false);
   final ValueNotifier<bool> loadingChat = ValueNotifier<bool>(true);
 
@@ -797,6 +824,11 @@ class _ChatState extends State<_Chat> {
   @override
   void initState() {
     super.initState();
+    TradePaymentStatus status =
+        TradePaymentStatusExt.fromInt(widget.trade.status.validate(value: -1));
+    sheetMinimized = ValueNotifier<bool>(
+        status == TradePaymentStatus.completed ||
+            status == TradePaymentStatus.cancelled);
     user = types.User(id: appStore.userId.validate().toString());
     onConnectPressed();
     afterBuildCreated(() => getChatMessages());
@@ -824,7 +856,6 @@ class _ChatState extends State<_Chat> {
       if (value.$1) {
         final messageList = <types.Message>[];
         for (var e in ((value.$2['chats'] ?? []) as List)) {
-          pl(e);
           var message = tryCatch(() => messageFromJson(e), 'getChatMessages');
           if (message == null) continue;
           messageList.add(message);
@@ -863,14 +894,21 @@ class _ChatState extends State<_Chat> {
     String id = json['id'].toString().validate();
     types.Status status =
         json['is_read'] == 1 ? types.Status.seen : types.Status.sent;
-    String firstName = json['chatable']['fullname'].toString().validate();
-    // String lastName = json['chatable']['username'].toString().validate();
+    String username = json['chatable']['username'].toString().validate();
+    String firstName = json['chatable']['firstname'].toString().validate();
+    String lastName = json['chatable']['lastname'].toString().validate();
+    String fullName = firstName.isEmpty && lastName.isEmpty
+        ? username
+        : '$firstName $lastName';
+    String url =
+        'https://ui-avatars.com/api/?size=256&name=$fullName&background=ffc107&color=fff&=true';
+    Uri imageUrl = Uri.file(url);
+    pl('fullName: $fullName ${imageUrl.userInfo} ${imageUrl.data} ${imageUrl.normalizePath()}');
     types.User user = types.User.fromJson({
-      "firstName": firstName,
+      "firstName": firstName.capitalizeEachWord(),
       "id": (json['chatable']['id'] ?? '').toString(),
-      // "lastName": lastName,
-      'imageUrl':
-          'https://ui-avatars.com/api/?size=256&name=$firstName&background=ffc107&color=fff&=true',
+      "lastName": lastName.capitalizeEachWord(),
+      'imageUrl': imageUrl.data,
       // 'imageUrl': json['chatable']['imgPath'],
     });
     String text = json['description'].toString().validate();
@@ -1012,12 +1050,15 @@ class _ChatState extends State<_Chat> {
   void onEvent(PusherEvent event) {
     bool listen = event.channelName ==
         AppConst.pusherAppChatTopic + widget.trade.hashSlug.validate();
-    pl('onEvent: listen this:=> $listen ${event.channelName} \n ${event.data}');
-    if (listen &&
-        (event.data is Map<String, dynamic>) &&
-        event.data.isNotEmpty) {
-      types.Message? message =
-          tryCatch(() => messageFromJson(jsonDecode(event.data)['message']));
+    pl('onEvent: listen this:=> $listen ${event.channelName} \n ${event.data.runtimeType}');
+    if (listen && (event.data is String) && event.data.isNotEmpty) {
+      var data = jsonDecode(event.data);
+      if (data is Map<String, dynamic> && data.isNotEmpty) {
+        data = data['message'];
+      } else {
+        return;
+      }
+      types.Message? message = tryCatch(() => messageFromJson(data));
       if (message != null) {
         bool contains =
             messages.value.any((element) => element.id == message.id);
@@ -1083,7 +1124,7 @@ class _ChatState extends State<_Chat> {
                       bool isOnline = anotherUser?.status == 1;
                       return ControlledBottomSheet(
                           // padding: const EdgeInsets.all(0),
-                          minimizedHeight: 70,
+                          minimizedHeight: 50,
                           maximizedHeight: maximumHeight,
                           showLine: false,
                           showButton: false,
@@ -1099,13 +1140,20 @@ class _ChatState extends State<_Chat> {
                                 isOnline: isOnline,
                               ),
                           builder: (context, notifier, sheetMinimized) {
+                            TradePaymentStatus status =
+                                TradePaymentStatusExt.fromInt(
+                                    widget.trade.status.validate());
                             return CustomChatWidget(
-                              hideInput: sheetMinimized,
+                              hideInput: sheetMinimized ||
+                                  (status == TradePaymentStatus.completed ||
+                                      status == TradePaymentStatus.cancelled),
                               // enableFileSelection: true,
                               // enableImageSelection: false,
                               messagesList: messages,
                               onSendPressed: sendMessage,
                               loading: loadingChat,
+                              showUserAvatar: true,
+
                               onLoadMore: () async {
                                 await getChatMessages(
                                     int.tryParse(messages.value.last.id), 20);
@@ -1122,71 +1170,80 @@ class _ChatState extends State<_Chat> {
   Widget _header(ValueNotifier<bool> notifier, bool sheetMinimized,
       BuildContext context, bool dragging,
       {required String username, required bool isOnline}) {
-    return JustTheTooltip(
-      content: Padding(
-        padding: const EdgeInsets.all(DEFAULT_PADDING),
-        child: Text('Long press and drag to resize the view',
-            style: primaryTextStyle()),
-      ),
-      triggerMode: TooltipTriggerMode.tap,
-      tailBuilder: JustTheInterface.defaultBezierTailBuilder,
-      preferredDirection: AxisDirection.up,
-      child: LongPressDraggable(
-          feedback: Container(height: 30),
-          onDragUpdate: (details) {
-            double height = context.height() - details.globalPosition.dy;
-            if (height > 0 && height > 300) {
-              _maximumHeight.value = height;
-            }
-          },
-          onDragStarted: () => _dragging.value = true,
-          onDragEnd: (details) => _dragging.value = false,
-          child: Center(
-              child: AnimatedScale(
-            scale: dragging ? 1.5 : 1,
-            duration: const Duration(milliseconds: 200),
-            child: Stack(
-              children: [
-                _CustomChatHeader(
-                  notifier: notifier,
-                  val: sheetMinimized,
-                  username: username,
-                  isOnline: isOnline,
-                  dragging: dragging,
-                ),
+    var child = Draggable(
+        feedback: Container(height: 30),
+        onDragUpdate: (details) {
+          double height = context.height() - details.globalPosition.dy;
+          if (height > 0 && height > 300) {
+            _maximumHeight.value = height;
+          }
+        },
+        onDragStarted: () {
+          _dragging.value = true;
+          timeDilation = 0.5;
+        },
+        onDragEnd: (details) {
+          _dragging.value = false;
+          timeDilation = 1.0;
+        },
+        child: Center(
+            child: AnimatedScale(
+          scale: dragging ? 1.5 : 1,
+          duration: const Duration(milliseconds: 100),
+          child: Stack(
+            children: [
+              _CustomChatHeader(
+                minimizeNotifier: notifier,
+                val: sheetMinimized,
+                username: username,
+                isOnline: isOnline,
+                dragging: dragging,
+              ),
 
-                ///drag handle
-                if (!sheetMinimized)
-                  Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                          child: AnimatedScale(
-                        scale: dragging ? 0.8 : 1,
-                        duration: const Duration(milliseconds: 200),
-                        child: const FaIcon(FontAwesomeIcons.gripLines,
-                            color: Colors.grey, size: 30),
-                      ))),
-              ],
+              ///drag handle
+              if (!sheetMinimized)
+                Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                        child: AnimatedScale(
+                      scale: dragging ? 0.8 : 1,
+                      duration: const Duration(milliseconds: 200),
+                      child: const FaIcon(FontAwesomeIcons.gripLines,
+                          color: Colors.grey, size: 30),
+                    ))),
+            ],
+          ),
+        )));
+
+    return sheetMinimized
+        ? child
+        : JustTheTooltip(
+            content: Padding(
+              padding: const EdgeInsets.all(DEFAULT_PADDING),
+              child: Text('Drag up/down to resize chat window.',
+                  style: primaryTextStyle()),
             ),
-          ))),
-    );
+            triggerMode: TooltipTriggerMode.tap,
+            tailBuilder: JustTheInterface.defaultBezierTailBuilder,
+            preferredDirection: AxisDirection.up,
+            child: child);
   }
 }
 
 class _CustomChatHeader extends StatelessWidget {
-  const _CustomChatHeader(
-      {Key? key,
-      required this.notifier,
-      required this.val,
-      required this.username,
-      required this.isOnline,
-      required this.dragging})
-      : super(key: key);
+  const _CustomChatHeader({
+    Key? key,
+    required this.minimizeNotifier,
+    required this.val,
+    required this.username,
+    required this.isOnline,
+    required this.dragging,
+  }) : super(key: key);
 
   /// sheet close notifier
-  final ValueNotifier<bool> notifier;
+  final ValueNotifier<bool> minimizeNotifier;
   final bool val;
   final String username;
   final bool isOnline;
@@ -1237,8 +1294,8 @@ class _CustomChatHeader extends StatelessWidget {
                                   style: boldTextStyle(
                                       size: 12, color: Colors.white)))
                           : const Icon(Icons.close, color: Colors.grey))
-                      .onTap(() => notifier.value = !val)
-                      .paddingRight(10)
+                      .onTap(() => minimizeNotifier.value = !val)
+                      .paddingRight(DEFAULT_PADDING)
                       .visible(!dragging),
                 ],
               ),

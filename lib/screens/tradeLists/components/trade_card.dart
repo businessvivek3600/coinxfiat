@@ -52,14 +52,15 @@ class TradeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int statusIndex = status ?? 0;
+    // int statusIndex = status ?? 0;
+    TradePaymentStatus status = TradePaymentStatusExt.fromInt(this.status ?? 0);
 
     // status.validate().toLowerCase() == 'pending'
     //     ? 0
     //     : status.validate().toLowerCase() == 'running'
     //         ? 1
     //         : 2;
-    int typeIndex = type.validate().toLowerCase() == 'buy' ? 0 : 1;
+    bool buy = type.validate().toLowerCase() == 'buy';
     return Skeletonizer(
       textBoneBorderRadius: TextBoneBorderRadius(BorderRadius.circular(3)),
       enabled: loading,
@@ -75,7 +76,7 @@ class TradeCard extends StatelessWidget {
                                 color: Colors.grey.withOpacity(0.2))))
                 : null,
             child: Card(
-              elevation: useDivider ? 0 : 2,
+              elevation: useDivider ? 0 : 0,
               margin: useDivider
                   ? null
                   : const EdgeInsets.only(
@@ -93,12 +94,7 @@ class TradeCard extends StatelessWidget {
                     : useDivider
                         ? BorderSide.none
                         : BorderSide(
-                            color: statusIndex == 0
-                                ? pendingColor.withOpacity(0.2)
-                                : statusIndex == 1
-                                    ? runningColor.withOpacity(0.2)
-                                    : completedColor.withOpacity(0.2),
-                            width: 2),
+                            color: status.color.withOpacity(0.2), width: 2),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(DEFAULT_PADDING),
@@ -200,7 +196,7 @@ class TradeCard extends StatelessWidget {
                             FaIcon(
                               FontAwesomeIcons.sellsy,
                               size: LABEL_TEXT_SIZE * 0.9,
-                              color: typeIndex == 1 ? sellColor : buyColor,
+                              color: buy ? sellColor : buyColor,
                             ),
                             width5(),
                             capText(type.validate(), context,
@@ -215,21 +211,13 @@ class TradeCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             FaIcon(
-                              statusIndex == 0
-                                  ? FontAwesomeIcons.clock
-                                  : statusIndex == 2
-                                      ? FontAwesomeIcons.solidCircleCheck
-                                      : FontAwesomeIcons.personRunning,
+                              status.icon,
                               size: LABEL_TEXT_SIZE * 0.9,
-                              color: statusIndex == 0
-                                  ? pendingColor
-                                  : statusIndex == 1
-                                      ? runningColor
-                                      : completedColor,
+                              color: status.color,
                             ),
                             width5(),
                             capText(
-                                TradePaymentStatusExt.fromInt(statusIndex).name,
+                                status.name.validate().capitalizeFirstLetter(),
                                 context,
                                 fontWeight: FontWeight.bold),
                           ],
