@@ -45,8 +45,11 @@ class ApiConst {
   static String feedbacksOnAd(String id, int page) =>
       '/user/feedback/$id?page=$page';
   static String trades(
-          {required int page, required String type, String? adId}) =>
-      "user/trade/list/$type?page=$page${adId != null && adId.isNotEmpty ? '&adId=$adId' : ''}"; //trade list
+          {required int page,
+          required String type,
+          String? adId,
+          String? perPage}) =>
+      "user/trade/list/$type?page=$page${adId != null && adId.isNotEmpty ? '&adId=$adId' : ''}&perpage=$perPage"; //trade list
   static String tradeDetails(String slug) =>
       "user/trade/details/$slug"; //trade list
   static String tradeActionById(String endPoint) =>

@@ -173,16 +173,23 @@ class Apis {
 
   ///get advertisements
   static Future<(bool status, Map<String, dynamic> data, String? message)>
-      getTradesApi(
-          {String? type,
-          int page = 1,
-          String? currencyCode,
-          String? status,
-          String? adId}) async {
+      getTradesApi({
+    String? type,
+    int page = 1,
+    String? currencyCode,
+    String? status,
+    String? adId,
+    String? perPage,
+  }) async {
     try {
       var (bool _status, Map<String, dynamic> data, String? message) =
           await ApiHandler.fetchData(
-              ApiConst.trades(page: page, type: type ?? 'all', adId: adId),
+              ApiConst.trades(
+                page: page,
+                type: type ?? 'all',
+                adId: adId,
+                perPage: perPage ?? '',
+              ),
               method: ApiMethod.GET);
       if (_status && data.isNotEmpty && data['data'] != null) {
         return (true, data['data'] as Map<String, dynamic>, null);
@@ -401,7 +408,7 @@ class Apis {
 
   ///create ticket
   static Future<(bool status, Map<String, dynamic> data, String? message)>
-      createTicketApi(Map<String, dynamic> info) async {
+      createTicketApi(dynamic info) async {
     try {
       var (bool status, Map<String, dynamic> data, String? message) =
           await ApiHandler.fetchData(ApiConst.tickets,
@@ -419,10 +426,10 @@ class Apis {
 
   ///create ticket message
   static Future<(bool status, Map<String, dynamic> data, String? message)>
-      replyTicket(dynamic info) async {
+      replyTicket(dynamic info, String id) async {
     try {
       var (bool status, Map<String, dynamic> data, String? message) =
-          await ApiHandler.fetchData(ApiConst.ticketById(info['ticket_id']),
+          await ApiHandler.fetchData(ApiConst.ticketById(id),
               method: ApiMethod.POST, data: info);
       if (status && data.isNotEmpty) {
         return (true, data['data'] as Map<String, dynamic>, message);

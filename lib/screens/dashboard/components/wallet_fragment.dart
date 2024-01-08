@@ -247,6 +247,9 @@ class _BuySellHistoryState extends State<_BuySellHistory>
   List<Crypto> cryptos = [];
   List<Crypto> fiats = [];
   List<Gateways> gateways = [];
+  int currentPage = 1;
+  int total = 0;
+  bool hasMore = false;
 
   bool loading = true;
   @override
@@ -259,8 +262,15 @@ class _BuySellHistoryState extends State<_BuySellHistory>
     });
   }
 
-  Future<void> buySellTradesApi() async {
+  Future<void> buySellTradesApi({bool refresh = true}) async {
+    if (refresh) {
+      currentPage = 1;
+      hasMore = false;
+    } else {
+      currentPage++;
+    }
     await Apis.buySellTradesApi(
+      page: currentPage,
       type: _tabController.index == 0 ? 'buy' : 'sell',
       cryptoId: (cryptos
                   .firstWhere((element) => element.name == _selectedCoinType,
@@ -279,8 +289,11 @@ class _BuySellHistoryState extends State<_BuySellHistory>
     ).then((value) {
       /// list
       tryCatch(() {
+        total = tryCatch(() => value.$2['lists']['total']) ?? 0;
+
         ///list
-        buyselltradesFromApi(value.$2['lists']?['data'] ?? []);
+        buyselltradesFromApi(value.$2['lists']?['data'] ?? [],
+            refresh: refresh);
         p('buySellTrades ${buySellTrades.length}');
 
         ///filter items
@@ -292,6 +305,7 @@ class _BuySellHistoryState extends State<_BuySellHistory>
         p('gateways ${gateways.length}');
         log(' buySellTrades ${buySellTrades.length} cryptos ${cryptos.length} fiats ${fiats.length} gateways ${gateways.length}');
       }, 'buySellTradesApi');
+      hasMore = buySellTrades.length < total;
     });
   }
 
@@ -317,6 +331,18 @@ class _BuySellHistoryState extends State<_BuySellHistory>
         .name
         .validate());
     buySellTradesApi()
+        .then((value) => setState(() => loading = false))
+        .catchError((e) => log(e.toString()));
+  }
+
+  Future<void> onRefresh() async {
+    await buySellTradesApi()
+        .then((value) => setState(() => loading = false))
+        .catchError((e) => log(e.toString()));
+  }
+
+  Future<void> onNextPage() async {
+    await buySellTradesApi(refresh: false)
         .then((value) => setState(() => loading = false))
         .catchError((e) => log(e.toString()));
   }
@@ -356,13 +382,19 @@ class _BuySellHistoryState extends State<_BuySellHistory>
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _BuyTradeList(
-                        typeIndex: 1,
-                        tradeList: buySellTrades,
-                        loading: loading),
+                      typeIndex: 1,
+                      tradeList: buySellTrades,
+                      loading: loading,
+                      onRefresh: onRefresh,
+                      onNextPage: hasMore ? () => onNextPage() : null,
+                    ),
                     _BuyTradeList(
-                        typeIndex: 0,
-                        tradeList: buySellTrades,
-                        loading: loading),
+                      typeIndex: 0,
+                      tradeList: buySellTrades,
+                      loading: loading,
+                      onRefresh: onRefresh,
+                      onNextPage: hasMore ? () => onNextPage() : null,
+                    ),
                   ],
                 ),
         ),
@@ -457,10 +489,19 @@ class _BuySellHistoryState extends State<_BuySellHistory>
     );
   }
 
-  buyselltradesFromApi(List<dynamic> data) {
-    buySellTrades.clear();
-    tryCatch(() => buySellTrades =
-        data.map<BuySellTrade>((e) => BuySellTrade.fromJson(e)).toList());
+  buyselltradesFromApi(List<dynamic> data, {required bool refresh}) {
+    if (refresh) {
+      buySellTrades.clear();
+    }
+    tryCatch(() {
+      List<BuySellTrade> trades =
+          data.map<BuySellTrade>((e) => BuySellTrade.fromJson(e)).toList();
+      if (refresh) {
+        buySellTrades = trades;
+      } else {
+        buySellTrades.addAll(trades);
+      }
+    });
   }
 
   cryptosFromApi(List<dynamic> data) => tryCatch(() =>
@@ -897,15 +938,25 @@ class _BuySellHistoryState extends State<_BuySellHistory>
 
 class _BuyTradeList extends StatelessWidget {
   const _BuyTradeList(
-      {this.typeIndex = 0, required this.tradeList, required this.loading});
+      {this.typeIndex = 0,
+      required this.tradeList,
+      required this.loading,
+      this.onRefresh,
+      this.onNextPage});
   final int typeIndex;
   final List<BuySellTrade> tradeList;
   final bool loading;
+  final Future<void> Function()? onRefresh;
+  final VoidCallback? onNextPage;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedListView(
+      onSwipeRefresh: onRefresh,
+      onNextPage: onNextPage,
+
       listAnimationType: ListAnimationType.FadeIn,
+      shrinkWrap: true,
       padding:
           const EdgeInsets.only(top: DEFAULT_PADDING, bottom: DEFAULT_PADDING),
       itemCount: tradeList.length,

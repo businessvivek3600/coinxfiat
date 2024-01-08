@@ -23,6 +23,9 @@ class _TradeListState extends State<TradeList>
   ValueNotifier<List<Trade>> trades = ValueNotifier<List<Trade>>([]);
   List<String> tabs = ['All', 'Running', 'Complete'];
   late String type;
+  int currentPage = 1;
+  int total = 0;
+  bool hasMore = false;
   @override
   void initState() {
     super.initState();
@@ -54,10 +57,24 @@ class _TradeListState extends State<TradeList>
 
   Future<void> getTrades({bool isRefresh = false}) async {
     isLoading.value = isRefresh;
-    if (isRefresh) trades.value = [];
-    await Apis.getTradesApi(page: 1, type: type, adId: widget.adId.validate())
+    if (isRefresh) {
+      trades.value = [];
+      currentPage = 1;
+      total = 0;
+      hasMore = false;
+    } else {
+      currentPage++;
+    }
+    await Apis.getTradesApi(
+            page: currentPage,
+            type: type,
+            adId: widget.adId.validate(),
+            perPage: '6')
         .then((value) {
       if (value.$1) {
+        currentPage = tryCatch<int>(() => value.$2['trades']['current_page']) ??
+            currentPage;
+        total = tryCatch<int>(() => value.$2['trades']['total']) ?? total;
         List<Trade> list = tryCatch<List<Trade>>(() =>
                 (value.$2['trades']?['data'] ?? [])
                     .map<Trade>((e) => Trade.fromJson(e))
@@ -68,7 +85,9 @@ class _TradeListState extends State<TradeList>
         } else {
           trades.value = [...trades.value, ...list];
         }
-        pl('trades: ${trades.value.length}', 'Trade List Page');
+        hasMore = trades.value.length < total;
+        pl('trades: ${trades.value.length} hasMore: $hasMore',
+            'Trade List Page');
       }
     });
     isLoading.value = false;
@@ -153,6 +172,8 @@ class _TradeListState extends State<TradeList>
             );
           }
           return AnimatedListView(
+            onSwipeRefresh: () => getTrades(isRefresh: true),
+            onNextPage: hasMore ? () => getTrades() : null,
             padding: const EdgeInsets.only(bottom: 60),
             itemCount: list.length,
             listAnimationType: ListAnimationType.FadeIn,

@@ -204,6 +204,8 @@ final GoRouter goRouter = GoRouter(
               pageBuilder: (context, state) => animatedRoute(
                 state,
                 (state) => SupportChatPage(
+                    key: ValueKey(state.pathParameters['id'] ??
+                        'error${DateTime.now().millisecondsSinceEpoch}'),
                     id: state.pathParameters['id'],
                     title:
                         tryCatch(() => (state.extra as Map)['title'] ?? '') ??
@@ -316,8 +318,11 @@ List<String> authenticatedRoutes = [
 Page animatedRoute(
     GoRouterState state, Widget Function(GoRouterState state) child,
     {RouteTransition? transition}) {
-  if ((Platform.isAndroid || Platform.isIOS) &&
-      state.uri.queryParameters['anim'] == null) {
+  String? anim = state.uri.queryParameters['anim'] ??
+      (state.extra is Map && (state.extra as Map).containsKey('anim')
+          ? (state.extra as Map)['anim']
+          : null);
+  if ((Platform.isAndroid || Platform.isIOS) && anim == null) {
     return CupertinoPage(
       child: child(state),
       key: state.pageKey,
@@ -334,9 +339,8 @@ Page animatedRoute(
       tag: 'My Router');
 
   RouteTransition pageTransition = transition ??
-      RouteTransition.values.firstWhere((element) =>
-          element.name ==
-          (state.uri.queryParameters['anim'] ?? RouteTransition.fomRight.name));
+      RouteTransition.values.firstWhere(
+          (element) => element.name == (anim ?? RouteTransition.fade.name));
   return CustomTransitionPage(
       key: state.pageKey,
       child: child(state),

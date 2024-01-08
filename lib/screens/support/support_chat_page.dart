@@ -2,16 +2,21 @@ import 'package:coinxfiat/model/model_index.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../../component/component_index.dart';
 import '../../constants/constants_index.dart';
+import '../../routes/route_index.dart';
 import '../../services/service_index.dart';
 import '../../store/store_index.dart';
 import '../../utils/utils_index.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
+
+import '../screen_index.dart';
 
 class SupportChatPage extends StatefulWidget {
   const SupportChatPage({super.key, this.title, this.lastSeen, this.id});
@@ -25,8 +30,8 @@ class SupportChatPage extends StatefulWidget {
 class _SupportChatPageState extends State<SupportChatPage> {
   final ValueNotifier<List<types.Message>> messages =
       ValueNotifier<List<types.Message>>([]);
-  ValueNotifier<bool> loading = ValueNotifier(true);
-  ValueNotifier<List<Ticket>> ticket = ValueNotifier([]);
+  final ValueNotifier<bool> _loading = ValueNotifier(true);
+  ValueNotifier<Ticket?> ticket = ValueNotifier(null);
 
   @override
   void initState() {
@@ -36,16 +41,17 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
   @override
   void dispose() {
-    loading.dispose();
+    _loading.dispose();
     messages.dispose();
     super.dispose();
   }
 
   Future<void> getChatMessages([dynamic chatId, int perPage = 20]) async {
-    loading.value = true;
+    _loading.value = chatId == null;
     await Apis.getTicketMessagesByIdApi(widget.id.validate(), null)
         .then((value) async {
       if (value.$1) {
+        ticket.value = tryCatch(() => Ticket.fromJson(value.$2['ticket']));
         final messageList = <types.Message>[];
         for (var e in ((tryCatch(() => value.$2['messages'] ?? [])) as List)) {
           var message = tryCatch(() => messageFromJson(e), 'getChatMessages');
@@ -75,7 +81,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
       }
       pl('tickets: ${messages.value.length}');
     });
-    loading.value = false;
+    _loading.value = false;
   }
 
   Future<bool> sendMessage(dynamic message) async {
@@ -91,7 +97,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
     }
     pl('sending message: $message ${formData.fields}}');
 
-    await Apis.replyTicket(formData).then((value) {
+    await Apis.replyTicket(formData, widget.id.validate()).then((value) {
       pl('pushTradeMessageApi: $value');
       if (value.$1) setState(() {});
       // myChannel!.trigger(
@@ -205,19 +211,117 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomChatWidget(
-        user: types.User(id: appStore.userId.toString()),
-        messagesList: messages,
-        onSendPressed: sendMessage,
-        loading: loading,
-        showUserAvatar: true,
-        onLoadMore: () async {
-          await getChatMessages(int.tryParse(messages.value.last.id), 20);
-        },
-        appBar: (messages, user) =>
-            _ChatPageAppBar(title: widget.title, lastSeen: widget.lastSeen),
-      ),
+    return ValueListenableBuilder<bool>(
+        valueListenable: _loading,
+        builder: (_, loading, ch) {
+          return ValueListenableBuilder<Ticket?>(
+              valueListenable: ticket,
+              builder: (_, ticket, c) {
+                bool inValid = ticket == null;
+                return Scaffold(
+                  appBar: _ChatPageAppBar(
+                      title: widget.title, lastSeen: widget.lastSeen),
+                  body: loading
+                      ? Center(
+                          child: assetLottie(MyLottie.chatLoading,
+                              width: 100, height: 70))
+                      : inValid
+                          ? errorWidget(context)
+                          : CustomChatWidget(
+                              user: types.User(id: appStore.userId.toString()),
+                              messagesList: messages,
+                              onSendPressed: sendMessage,
+                              loading: _loading,
+                              showUserAvatar: true,
+                              onLoadMore: () async {
+                                await getChatMessages(
+                                    int.tryParse(messages.value.last.id), 20);
+                              },
+                              // appBar: (messages, user) => _ChatPageAppBar(
+                              //     title: widget.title,
+                              //     lastSeen: widget.lastSeen),
+                            ),
+                );
+              });
+        });
+  }
+
+  Column errorWidget(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        assetLottie(MyLottie.support),
+        10.height,
+        Text(
+          'The support ticket may have been closed or deleted.',
+          style: GoogleFonts.asapCondensed(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        10.height,
+        Text(
+          'Please contact support for more information.',
+          style: GoogleFonts.asapCondensed(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        10.height,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {
+                finish(context);
+              },
+              child: Text(
+                'Go Back',
+                style: GoogleFonts.asapCondensed(
+                    fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ),
+            10.width,
+            TextButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => CreateSupportTicketPage(
+                    onCreate: (ticket) async {
+                      // List<Ticket> tickets = [...supportStore.supportTickets];
+                      Navigator.pop(context);
+                      supportStore.supportTickets.insert(0, ticket);
+                      supportStore
+                          .setSupportTickets(supportStore.supportTickets);
+                      pl('tickets: ${ticket.ticket} ${supportStore.supportTickets.length} ${supportStore.loadingSupportTickets}');
+                      await 1.seconds.delay.then((value) {
+                        goRouter.push(
+                          Paths.chat(ticket.ticket ?? 'no_id'),
+                          extra: {
+                            'title': 'Ticket ${ticket.ticket.validate()}',
+                            'lastSeen': ticket.lastReply.validate(),
+                            'anim': RouteTransition.fomRight.name,
+                          },
+                        );
+                      });
+                    },
+                  ),
+                  isScrollControlled: false,
+                );
+              },
+              child: Text(
+                'Create a new ticket',
+                style: GoogleFonts.asapCondensed(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -25,19 +25,23 @@ class _AdvertisementFragmentState extends State<AdvertisementFragment> {
   ValueNotifier<List<Advertisement>> advertisementList =
       ValueNotifier<List<Advertisement>>([]);
   ValueNotifier<bool> isLoading = ValueNotifier<bool>(true);
+  int currentPage = 1;
+  int total = 0;
+  bool hasMore = false;
 
   @override
   void initState() {
     super.initState();
     afterBuildCreated(() {
-      getAdvertisements(isRefresh: true);
+      getAdvertisements(page: currentPage, isRefresh: true);
     });
   }
 
   Future<void> getAdvertisements({int page = 1, bool isRefresh = false}) async {
     isLoading.value = isRefresh;
+    currentPage = page;
     await Apis.getAdvertisementsApi(
-      page: page,
+      page: currentPage,
       currencyCode: _getFilterValueByKey(queryKey).toString().validate(),
       type: ((_getFilterValueByKey(typeKey)?.key ?? '') as String)
           .split('$typeKey/')
@@ -46,8 +50,11 @@ class _AdvertisementFragmentState extends State<AdvertisementFragment> {
           .split('$statusKey/')
           .last,
     ).then((value) {
-      print('getAdvertisementsApi $value');
       if (value.$1) {
+        currentPage =
+            tryCatch<int>(() => value.$2['advertises']['current_page']) ??
+                currentPage;
+        total = tryCatch<int>(() => value.$2['advertises']['total']) ?? total;
         List<Advertisement> list = tryCatch<List<Advertisement>>(() =>
                 (value.$2['advertises']?['data'] ?? [])
                     .map<Advertisement>((e) => Advertisement.fromJson(e))
@@ -58,6 +65,7 @@ class _AdvertisementFragmentState extends State<AdvertisementFragment> {
         } else {
           advertisementList.value = [...advertisementList.value, ...list];
         }
+        hasMore = advertisementList.value.length < total;
       }
       print('advertisementList ${advertisementList.value.length}');
     });
@@ -158,6 +166,10 @@ class _AdvertisementFragmentState extends State<AdvertisementFragment> {
             ).paddingAll(DEFAULT_PADDING);
           }
           return AnimatedListView(
+            onSwipeRefresh: () => getAdvertisements(isRefresh: true),
+            onNextPage: !hasMore
+                ? null
+                : () => getAdvertisements(page: currentPage + 1),
             listAnimationType: ListAnimationType.FadeIn,
             padding: const EdgeInsets.only(bottom: 60),
             itemCount: list.length,

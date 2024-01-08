@@ -145,6 +145,9 @@ class _RestBody extends StatelessWidget {
                     color: getTheme(context).colorScheme.secondary,
                     width: DEFAULT_RADIUS))),
         child: AnimatedScrollView(
+          onSwipeRefresh: () async {
+            dashboardStore.getDashboardData();
+          },
           fadeInConfiguration: FadeInConfiguration(
               delay: 100.microseconds,
               duration: 100.milliseconds,

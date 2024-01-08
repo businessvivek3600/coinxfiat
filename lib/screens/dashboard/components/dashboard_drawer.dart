@@ -64,7 +64,7 @@ class _DashboardDrawerState extends State<DashboardDrawer> {
                 padding: const EdgeInsets.all(0),
                 children: [
                   SnapHelperWidget<bool>(
-                      future: Future.delayed(const Duration(seconds: 1))
+                      future: Future.delayed(const Duration(seconds: 0))
                           .then((value) => true),
                       loadingWidget: Skeletonizer(
                           child: DrawerItemsTree(
